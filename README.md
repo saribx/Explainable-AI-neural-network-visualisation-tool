@@ -1,9 +1,18 @@
 # ExplainableAI - Neural Network Visualization Tool
 **Date:** 2024-10-23
 
+A visualisation tool that makes neural networks transparent and provides insights into activations, edge weights and decision paths when data flows through. 
+Most ML models are considered black-box models, which is problematic for high-stakes decisions. An Understanding why a model made a certain prediction (e.g medical diagnosis), verifying and debugging ML models is needed. 
+Problem: Hard to verify correctness of explanations and it was shown that most XAl methods are not reliable
 
-Ein Visualisierungstool, das neuronale Netzwerke transparent macht und Einblicke in Aktivierungen, Kantengewichte und Entscheidungswege bietet.
+Other Applications already exisiting:
+- https://alexlenail.me/NN-SVG/
+- https://tensorspace.org
 
+GRADING CRITERIA
+• Project Journal (40%)
+• GitHub Repository (30%)
+• Demo (poster session) (30%)
 ---
 
 ## Requirements
@@ -67,6 +76,8 @@ Ein Visualisierungstool, das neuronale Netzwerke transparent macht und Einblicke
 ## Overview Image
 
 ![Overview of XAI Method](XAI_method_overview.png)
+<img width="941" alt="Bildschirmfoto 2024-11-10 um 22 59 53" src="https://github.com/user-attachments/assets/187e3a61-b7d0-4ebe-b1b5-15e94ddf48cc">
+
 
 
 ## Highlights
