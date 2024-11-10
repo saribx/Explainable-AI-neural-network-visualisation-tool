@@ -9,10 +9,11 @@ Other Applications already exisiting:
 - https://alexlenail.me/NN-SVG/
 - https://tensorspace.org
 
+
 GRADING CRITERIA
-• Project Journal (40%)
-• GitHub Repository (30%)
-• Demo (poster session) (30%)
+- Project Journal (40%)
+- GitHub Repository (30%)
+- Demo (poster session) (30%)
 ---
 
 ## Requirements
