@@ -1,6 +1,72 @@
-# ExplainableAI
+# ExplainableAI - Neural Network Visualization Tool
+**Date:** 2024-10-23
 
-An extremely fast Python package and project manager, written in Rust.
+
+Ein Visualisierungstool, das neuronale Netzwerke transparent macht und Einblicke in Aktivierungen, Kantengewichte und Entscheidungswege bietet.
+
+---
+
+## Requirements
+
+### Base Requirements
+
+- Upload a trained model checkpoint.
+- Upload data, e.g., per layer, node, or edge collectively.
+- Tool visualizes:
+  - Activation histograms.
+  - Strength of individual edges.
+- Well-documented codebase for ease of collaboration and maintainability.
+
+### Advanced Features
+
+- Visualizations of the input layer, either as individual nodes or in image form.
+- Overlay ground truth on the input layer for comparison.
+- Highlight the strongest path from input to output on hover.
+- Enable viewing of individual samples.
+- Support for various aggregation and visualization strategies for individual samples.
+
+### Topics for Discussion
+
+- **Datasets**: 
+	- Explore datasets such as:
+		- [XAI-Tris Dataset](https://github.com/braindatalab/xai-tris)
+		- **Paper**: [arXiv:2306.12816](https://arxiv.org/abs/2306.12816)
+		- **Download Link**: [Google Drive](https://drive.google.com/file/d/1eg27Rfx9nG4Wmxsi_fgLzUqtXtMCAuLN/view?usp=sharing)
+
+---
+
+## Suggested First Steps
+
+1. **Repository Setup**:
+   - Create a new GitHub repository for the project.
+
+2. **Dataset Familiarization**:
+   - Explore the dataset and train a classification model using PyTorch.
+
+3. **Tool Architecture Planning**:
+   - Determine frontend and backend architecture.
+   - Decide on libraries to use.
+   - Establish a data format for layer, node, and edge information.
+
+---
+
+## Library Suggestions
+
+### Frontend
+
+- **Framework**: React
+- **Visualization**: D3.js or other data visualization libraries
+
+### Backend
+
+- **Package Management**: Use `uv`
+- **Framework**: FastAPI for efficient API creation and management
+
+---
+
+## Overview Image
+
+![Overview of XAI Method](XAI_method_overview.png)
 
 
 ## Highlights
