@@ -1,0 +1,116 @@
+import { useState } from 'react';
+import './App.css';
+import api from './api';
+
+function App() {
+    const [isModelFileUploaded, setIsModelFileUploaded] = useState(false);
+    const [isActFileUploaded, setIsActFileUploaded] = useState(false);
+    const [file, setFile] = useState(null);
+    const [Afile, setAFile] = useState(null);
+    const [visualizationData, setVisualizationData] = useState(null);
+
+    async function handleModelFileInput(e) {
+        const files = e.target.files;
+        if (files) {
+            setFile(files[0]);
+            setIsModelFileUploaded(true);
+            const formData = new FormData();
+            formData.append('file', files[0]);
+            await api.post('/upload_model/', formData, {
+                headers: {
+                    'Content-Type': 'multipart/form-data'
+                }
+            });
+        }
+    }
+
+    async function handleActFileInput(e) {
+        const Afiles = e.target.files;
+        if (Afiles) {
+            setAFile(Afiles[0]);
+            setIsActFileUploaded(true);
+            const formData = new FormData();
+            formData.append('file', Afiles[0]);
+            await api.post('/upload_activations/', formData, {
+                headers: {
+                    'Content-Type': 'multipart/form-data'
+                }
+            });
+        }
+    }
+
+    function handleModelUploadButtonClick() {
+        const input = document.createElement('input');
+        input.type = 'file';
+        input.accept = '.pt, .pth';
+        input.onchange = handleModelFileInput;
+        input.click();
+    }
+
+    function handleActUploadButtonClick() {
+        const input = document.createElement('input');
+        input.type = 'file';
+        input.accept = '.pt, .pth';
+        input.onchange = handleActFileInput;
+        input.click();
+    }
+
+    async function handleVisualizeButtonClick() {
+        try {
+            const response = await api.get('/');
+            setVisualizationData(response.data);
+        } catch (error) {
+            console.error("Error fetching visualization data:", error);
+        }
+    }
+
+    return (
+        <>
+            <h1 className="H">XAI NN Visualization Tool</h1>
+            <h3>Upload your trained model and its activations to visualize your neural network</h3>
+
+            <div className="code-block">
+                <p>With the simple upload of your trained model and its activations saved as .pt file</p>
+                <p>You can see the activations visually with histograms</p>
+                <p>To generate the activations you can use the following code:</p>
+                <code>
+                    <span className="keyword">acts</span> = <span className="function">collect_activation</span>(model_linear_correlated_data,
+                    model_linear_correlated_data_dict[<span className="string">"x_train"</span>])<br/>
+                    <span className="function">torch.save</span>(acts, <span className="string">'activations.pt'</span>)
+                </code>
+            </div>
+
+            <button onClick={handleModelUploadButtonClick} className='upload-button'>
+                Upload Model
+            </button>
+            {isModelFileUploaded && file &&
+                <p className='upload-text'>Model File Uploaded: {file.name}</p>
+            }
+
+            <button onClick={handleActUploadButtonClick} className='upload-button'>
+                Upload Activations
+            </button>
+            {isActFileUploaded && Afile &&
+                <p className='upload-text'>Activation File Uploaded: {Afile.name}</p>
+            }
+
+            {isActFileUploaded && isModelFileUploaded ? (
+                <button className='upload-button activated' onClick={handleVisualizeButtonClick}>
+                    Visualize
+                </button>
+            ) : (
+                <button className='upload-button non-activated'>
+                    Visualize
+                </button>
+            )}
+
+            {visualizationData && (
+                <div className="code-block">
+                    <pre>{JSON.stringify(visualizationData, null, 2)}</pre>
+                </div>
+            )}
+        </>
+    );
+}
+
+export default App;
