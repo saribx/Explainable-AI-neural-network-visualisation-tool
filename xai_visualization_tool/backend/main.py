@@ -3,7 +3,7 @@ from fastapi import FastAPI, HTTPException, File, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 import uvicorn
 import os
-#für model und acts
+
 app = FastAPI()
 origins = [
     "http://localhost:5173"
