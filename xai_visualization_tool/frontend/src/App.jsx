@@ -1,6 +1,10 @@
+// xai_visualization_tool/frontend/src/App.jsx
+import { BrowserRouter as Router, Route, Routes, Link } from 'react-router-dom';
 import { useState } from 'react';
 import './App.css';
 import api from './api';
+import NNdrawer from "./NNdrawer.jsx";
+
 
 function App() {
     const [isModelFileUploaded, setIsModelFileUploaded] = useState(false);
@@ -65,51 +69,75 @@ function App() {
     }
 
     return (
-        <>
-            <h1 className="H">XAI NN Visualization Tool</h1>
-            <h3>Upload your trained model and its activations to visualize your neural network</h3>
+        <Router>
+            <nav className="navbar">
+                <ul>
+                    <li><Link to="/">Home</Link></li>
+                    <li><Link to="/create_NN">Create NN</Link></li>
+                </ul>
+            </nav>
+            <Routes>
+                <Route path="/" element={
+                    <>
+                        <h1 className="H">XAI NN Visualization Tool</h1>
+                        <h3>Upload your trained model and its activations to visualize your neural network</h3>
 
-            <div className="code-block">
-                <p>With the simple upload of your trained model and its activations saved as .pt file</p>
-                <p>You can see the activations visually with histograms</p>
-                <p>To generate the activations you can use the following code:</p>
-                <code>
-                    <span className="keyword">acts</span> = <span className="function">collect_activation</span>(model_linear_correlated_data,
-                    model_linear_correlated_data_dict[<span className="string">"x_train"</span>])<br/>
-                    <span className="function">torch.save</span>(acts, <span className="string">'activations.pt'</span>)
-                </code>
+                        <div className="code-block">
+                            <p>With the simple upload of your trained model and its activations saved as .pt file</p>
+                            <p>You can see the activations visually with histograms</p>
+                            <p>To generate the activations you can use the following code:</p>
+                            <code>
+                                <span className="keyword">acts</span> = <span className="function">collect_activation</span>(model_linear_correlated_data,
+                                model_linear_correlated_data_dict[&quot;x_train&quot;])<br/>
+                                <span className="function">torch.save</span>(acts, &apos;activations.pt&apos;)
+                            </code>
+                        </div>
+
+                        <button onClick={handleModelUploadButtonClick} className="upload-button">
+                            Upload Model
+                        </button>
+                        {isModelFileUploaded && file &&
+                            <p className="upload-text">Model File Uploaded: {file.name}</p>
+                        }
+
+                        <button onClick={handleActUploadButtonClick} className="upload-button">
+                            Upload Activations
+                        </button>
+                        {isActFileUploaded && Afile &&
+                            <p className="upload-text">Activation File Uploaded: {Afile.name}</p>
+                        }
+
+                        {isActFileUploaded && isModelFileUploaded ? (
+                            <button className="upload-button activated" onClick={handleVisualizeButtonClick}>
+                                Visualize
+                            </button>
+                        ) : (
+                            <button className="upload-button non-activated">
+                                Visualize
+                            </button>
+                        )}
+
+                        {visualizationData && (
+                            <div className="code-block">
+                                <pre>{JSON.stringify(visualizationData, null, 2)}</pre>
+                            </div>
+                        )}
+                    </>
+                } />
+                <Route path="/create_NN" element={<CreateNN />} />
+            </Routes>
+        </Router>
+    );
+}
+
+function CreateNN() {
+    return (
+        <div className="create-nn-container">
+            <h1>Create Neural Network</h1>
+            <div id="nn-drawer-container" className="network-visualizer-container">
+                <NNdrawer />
             </div>
-
-            <button onClick={handleModelUploadButtonClick} className='upload-button'>
-                Upload Model
-            </button>
-            {isModelFileUploaded && file &&
-                <p className='upload-text'>Model File Uploaded: {file.name}</p>
-            }
-
-            <button onClick={handleActUploadButtonClick} className='upload-button'>
-                Upload Activations
-            </button>
-            {isActFileUploaded && Afile &&
-                <p className='upload-text'>Activation File Uploaded: {Afile.name}</p>
-            }
-
-            {isActFileUploaded && isModelFileUploaded ? (
-                <button className='upload-button activated' onClick={handleVisualizeButtonClick}>
-                    Visualize
-                </button>
-            ) : (
-                <button className='upload-button non-activated'>
-                    Visualize
-                </button>
-            )}
-
-            {visualizationData && (
-                <div className="code-block">
-                    <pre>{JSON.stringify(visualizationData, null, 2)}</pre>
-                </div>
-            )}
-        </>
+        </div>
     );
 }
 

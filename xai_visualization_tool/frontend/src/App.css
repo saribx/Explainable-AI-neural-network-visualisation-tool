@@ -1,47 +1,20 @@
-
-:root {
-  font-family: Inter, system-ui, Avenir, Helvetica, Arial, sans-serif;
-  line-height: 1.5;
-  font-weight: 400;
-  color-scheme: light dark;
-  color: rgba(255, 255, 255, 0.87);
-  font-synthesis: none;
-  text-rendering: optimizeLegibility;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-}
-
+/* Allgemeine Stile */
 body {
-  min-width: 320px;
-  min-height: 100vh;
+  font-family: 'Arial', sans-serif;
+  background-color: #f4f4f4;
+  color: #333;
   margin: 0;
+  padding: 0;
 }
 
-#root {
-  max-width: 1280px;
-  margin: 0 auto;
-  padding: 2rem;
+code {
+  display: block;
+  white-space: pre;
+  line-height: 1.5;
+  color: #dcdcaa;
 }
 
-.H {
-  text-align: center;
-  margin-top: 0;
-  padding: 2rem;
-  color: #4a1537; /* SchÃ¶nes Schwarz-Lila */
-  font-size: 3.5rem;
-  text-shadow: 0 0 10px rgba(255,255,255,0.2);
-}
-
-h3 {
-  text-align: center;
-  margin: 1.5rem 0;
-  color: #4a1537;
-  font-size: 1.2rem;
-  max-width: 800px;
-  margin-left: auto;
-  margin-right: auto;
-}
-
+/* Grundlegendes Layout für den Code-Block */
 .code-block {
   background: #1e1e1e;
   padding: 1.5rem;
@@ -55,47 +28,106 @@ h3 {
   border: 1px solid #333;
 }
 
-.code-block p {
+/* Überschriften */
+.H, h3 {
+  text-align: center;
+  color: #4a1537; /* SchÃ¶nes Schwarz-Lila */
+  font-size: 3.5rem;
+  text-shadow: 0 0 10px rgba(255, 255, 255, 0.2);
+}
+
+h3 {
+  font-size: 1.2rem;
+  margin: 1.5rem 0;
+  max-width: 800px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+/* Code-Block spezifische Stile */
+.code-block p, .code-block code {
   color: #d4d4d4;
   margin-bottom: 0.5rem;
 }
 
-.code-block code {
-  display: block;
-  white-space: pre;
-  line-height: 1.5;
-  color: #dcdcaa;
+.code-block code .keyword { color: #569cd6; }
+.code-block code .string { color: #ce9178; }
+.code-block code .function { color: #dcdcaa; }
+.code-block code .comment { color: #6a9955; font-style: italic; }
+
+/* Sicherstellen, dass der Code-Block auch in mobilen Ansichten sichtbar bleibt */
+@media (max-width: 768px) {
+  .code-block {
+    margin: 1rem;
+    padding: 1rem;
+    max-width: 100%;
+  }
 }
 
-.code-block code .keyword {
-  color: #569cd6;
+/* NAVBAR */
+.navbar {
+  background-color: #000;
+  padding: 1rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
 }
 
-.code-block code .string {
-  color: #ce9178;
+nav ul {
+  list-style: none;
+  display: flex;
+  justify-content: center;
+  padding: 0;
+  margin: 0;
 }
 
-.code-block code .function {
-  color: #dcdcaa;
+nav ul li {
+  margin: 0 1rem;
 }
 
-.code-block code .comment {
-  color: #6a9955;
-  font-style: italic;
+nav ul li a {
+  color: white;
+  text-decoration: none;
+  font-weight: bold;
 }
 
+nav ul li a:hover {
+  text-decoration: underline;
+}
+
+/* Für das mobile Layout */
+@media (max-width: 768px) {
+  .navbar {
+    flex-direction: column;
+    align-items: center;
+    padding: 1rem 0;
+  }
+
+  nav ul {
+    display: block;
+    text-align: center;
+    padding: 0;
+  }
+
+  nav ul li {
+    margin: 0.5rem 0;
+  }
+}
+
+/* Buttons */
 .upload-button {
   display: block;
   width: 80%;
   max-width: 300px;
   margin: 1rem auto;
   border-radius: 8px;
-  border: 1px solid rgba(255,255,255,0.1);
+  border: 1px solid rgba(255, 255, 255, 0.1);
   padding: 0.8em 1.2em;
   font-size: 1em;
   font-weight: 500;
   font-family: inherit;
   background: linear-gradient(45deg, #6b1b9a 0%, #9c27b0 100%);
+  color: white;
   cursor: pointer;
   transition: all 0.3s ease;
 }
@@ -106,10 +138,8 @@ h3 {
 }
 
 .upload-text {
-  color: #4CAF50;
-  font-size: 0.9em;
+  color: #333;
   text-align: center;
-  margin: 0.5rem auto;
 }
 
 .activated {
@@ -132,23 +162,48 @@ h3 {
   margin-top: 4rem;
 }
 
-@media (max-width: 768px) {
-  .H {
-    font-size: 2rem;
-    padding: 1rem;
-  }
+.create-nn-container {
+  width: 100%;
+  min-height: 100vh;
+  padding: 20px;
+  box-sizing: border-box;
+  background-color: #f0f0f0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
 
-  h3 {
-    font-size: 1rem;
-    padding: 0 1rem;
-  }
+.network-visualizer-container {
+  width: 100%;
+  height: 600px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  margin-top: 20px;
+  overflow: hidden;
+  position: relative;
+}
 
-  .upload-button {
-    width: 90%;
-  }
+#nn-drawer-container {
+  width: 100%;
+  height: 600px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  margin-top: 20px;
+  overflow: hidden;
+}
 
-  .code-block {
-    margin: 1rem;
-    padding: 1rem;
-  }
+.node {
+  stroke-width: 2px;
+}
+
+.link {
+  stroke-width: 1px;
+}
+
+#graph-container {
+  width: 100%;
+  height: 100%;
+  position: absolute; /* Added */
+  top: 0; /* Added */
+  left: 0; /* Added */
 }
