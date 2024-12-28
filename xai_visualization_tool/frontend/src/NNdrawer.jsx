@@ -93,8 +93,6 @@ function NeuralNetworkBuilder() {
         drawNetwork(networkData);
         addZoom();
     }
-
-
     return { build };
 }
 
