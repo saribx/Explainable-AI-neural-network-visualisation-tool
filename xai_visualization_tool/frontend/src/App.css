@@ -203,7 +203,7 @@ nav ul li a:hover {
   height: auto;
   min-height: 200px;
   min-width: 900px;
-  overflow: hidden;
+  overflow: auto;
 }
 
 .nn-drawer-container {
