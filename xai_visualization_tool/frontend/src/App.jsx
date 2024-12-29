@@ -3,6 +3,7 @@ import { useState } from 'react';
 import './App.css';
 import api from './api';
 import NNdrawer from "./NNdrawer.jsx";
+import ModelNetworkVisualizer from './modelNNVisualizer';
 
 function App() {
     // Track upload status of model and activation files
@@ -129,9 +130,12 @@ function App() {
 
                         {/* Display visualization results */}
                         {visualizationData && (
-                            <div className="code-block">
-                                <pre>{JSON.stringify(visualizationData, null, 2)}</pre>
-                            </div>
+                            <>
+                                <div className="code-block">
+                                    <pre>{JSON.stringify(visualizationData, null, 2)}</pre>
+                                </div>
+                                <ModelNetworkVisualizer visualizationData={visualizationData} />
+                            </>
                         )}
                     </>
                 } />
