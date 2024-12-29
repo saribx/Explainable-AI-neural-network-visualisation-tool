@@ -174,9 +174,9 @@ function NNdrawer() {
                 <div id="nn-drawer-container" className="nn-drawer-container"></div>
             </div>
             <div className="network-controls-sidebar">
-                <h3 className="controls-title">Netzwerk Parameter</h3>
+                <h3 className="controls-title">Network parameters</h3>
                 <div className="control-group">
-                    <label htmlFor="input-nodes">Eingabe-Knoten:</label>
+                    <label htmlFor="input-nodes">Input nodes:</label>
                     <input
                         id="input-nodes"
                         type="number"
@@ -187,7 +187,7 @@ function NNdrawer() {
                     />
                 </div>
                 <div className="control-group">
-                    <label htmlFor="hidden-layers" style={{color: '#0000ff', fontWeight: 'bold'}}>Anzahl Hidden
+                    <label htmlFor="hidden-layers" style={{color: '#0000ff', fontWeight: 'bold'}}>Number of Hidden
                         Layers:</label> <input
                     id="hidden-layers"
                     type="number"
@@ -199,7 +199,7 @@ function NNdrawer() {
                 </div>
                 {hiddenNodesPerLayer.map((nodes, index) => (
                     <div className="control-group" key={index}>
-                        <label htmlFor={`hidden-nodes-${index}`}>Hidden Layer {index + 1} Knoten:</label>
+                        <label htmlFor={`hidden-nodes-${index}`}>Hidden Layer {index + 1} nodes:</label>
                         <input
                             id={`hidden-nodes-${index}`}
                             type="number"
@@ -211,7 +211,7 @@ function NNdrawer() {
                     </div>
                 ))}
                 <div className="control-group">
-                    <label htmlFor="output-nodes">Ausgabe-Knoten:</label>
+                    <label htmlFor="output-nodes">Output nodes:</label>
                     <input
                         id="output-nodes"
                         type="number"
