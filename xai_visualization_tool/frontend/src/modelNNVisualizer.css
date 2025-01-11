@@ -4,161 +4,75 @@
     padding: 1rem;
     box-sizing: border-box;
     display: flex;
-    flex-direction: column;
+    justify-content: center;
     align-items: center;
 }
 
-.model-network-visualization h3 {
-    text-align: center;
-    color: #333;
-    margin: 1rem 0;
-    font-size: clamp(1.2rem, 2.5vw, 1.5rem);
+.network-container {
     width: 100%;
-}
-
-.nn-drawer-container {
-    /* Ändern von aspect-ratio zu min-height und height */
-    min-height: 800px; /* Erhöht von 600px */
-    height: auto !important; /* Erlaubt dem Container zu wachsen */
-    position: relative;
-    overflow: visible; /* Geändert von auto zu visible */
-    width: 100%;
+    max-width: 1400px;  /* Maximum width */
+    margin: 0 auto;
+    aspect-ratio: 16/9;  /* Maintains aspect ratio */
+    overflow: visible;
+    background: white;
+    border-radius: 8px;
     padding: 1rem;
+    display: flex;
+    justify-content: center;
+    align-items: center;
 }
 
-.nn-drawer-container svg {
+/* SVG Container */
+.network-container svg {
     width: 100% !important;
     height: 100% !important;
     display: block;
-    overflow: visible; /* Geändert von visible zu clip */
-    min-height: 800px; /* Hinzugefügt */
+    max-height: 90vh;  /* Prevent too large height */
 }
 
-/* Medienabfragen anpassen */
-@media screen and (max-width: 1200px) {
-    .nn-drawer-container {
-        min-height: 800px; /* Erhöht */
-        height: auto !important;
-        padding: 1.5rem;
-    }
+/* Network Node Styling */
+.network-node {
+    fill: white !important;
+    stroke: #333;
+    stroke-width: 1.5px;
 }
 
-@media screen and (max-width: 768px) {
-    .nn-drawer-container {
-        min-height: 800px; /* Erhöht */
-        height: auto !important;
-        padding: 1rem;
-    }
-}
-
-@media screen and (max-width: 480px) {
-    .nn-drawer-container {
-        min-height: 800px; /* Erhöht */
-        height: auto !important;
-        padding: 0.5rem;
-    }
-}
-/* SVG Specific Styles - Larger Elements */
+/* Network Connection Styling */
 .network-link {
-    transition: stroke-opacity 0.2s;
-    stroke-width: 1.5px !important;  /* Thicker connection lines */
+    stroke: #999;
+    stroke-opacity: 0.15;
+    stroke-width: 0.5px;
 }
 
-.network-node circle {
-    r: 15 !important;  /* Larger nodes */
+/* Histogram Styling */
+.histogram-bar {
+    fill: #4f9deb !important;
+    opacity: 0.8;
 }
 
-.layer-label {
-    font-size: clamp(2.2rem, 3vw, 1.8rem) !important;  /* Larger labels */
-    font-weight: 600;
+/* Modal Styles - unverändert ... */
+.histogram-modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: rgba(0, 0, 0, 0.7);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 1000;
 }
 
-/* Responsive Container Sizes */
-@media screen and (min-width: 1400px) {
-    .nn-drawer-container {
-        width: 98%;
-        max-width: 2400px;
-        min-height: 600px;
-    }
-}
-
-@media screen and (max-width: 1200px) {
-    .nn-drawer-container {
-        aspect-ratio: 16 / 9;
-        padding: 1.5rem;
-        min-height: 500px;
-    }
-}
-
-@media screen and (max-width: 768px) {
-    .model-network-visualization {
-        padding: 0.5rem;
-    }
-
-    .nn-drawer-container {
-        aspect-ratio: 4 / 3;
-        padding: 1rem;
-        min-height: 400px;
-    }
-
-    .network-node circle {
-        r: 12 !important;  /* Slightly smaller nodes on mobile devices */
-    }
-}
-
-@media screen and (max-width: 480px) {
-    .nn-drawer-container {
-        aspect-ratio: 1 / 1;
-        min-height: 300px;
-        padding: 0.5rem;
-    }
-
-    .layer-label {
-        font-size: 0.9rem !important;
-    }
-
-    .network-node circle {
-        r: 10 !important;  /* Even smaller nodes on very small devices */
-    }
-}
-
-/* Better Touch Support for Mobile Devices */
-@media (hover: none) and (pointer: coarse) {
-    .nn-drawer-container {
-        touch-action: pan-x pan-y;
-    }
-}
-
-/* Dark Mode */
-@media (prefers-color-scheme: dark) {
-    .nn-drawer-container {
-        background: #1a1a1a;
-        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
-    }
-
-    .model-network-visualization h3 {
-        color: #e0e0e0;
-    }
-
-    .layer-label {
-        fill: #e0e0e0;
-    }
-
-    .network-node {
-        fill: #2a2a2a;
-        stroke: #666;
-    }
-
-    .network-link {
-        stroke: #666;
-    }
-}
-
-/* Print Optimizations */
-@media print {
-    .nn-drawer-container {
-        box-shadow: none;
-        border: 1px solid #ddd;
-        page-break-inside: avoid;
-    }
+.histogram-modal-content {
+    background: white;
+    padding: 1.5rem;
+    border-radius: 8px;
+    width: 600px;
+    height: 500px;
+    position: relative;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
 }
