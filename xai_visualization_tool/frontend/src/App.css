@@ -292,9 +292,26 @@ nav ul li a:hover {
     margin-bottom: 1rem;
   }
 }
-
 /* SVG Styles */
 .node {
+  stroke-width: 2px;
+  fill: #ffffff !important; /* Weißer Hintergrund für Neuronen mit !important */
+  stroke: #666;
+}
+
+.network-link {
+  stroke-width: 1.5px !important;
+  stroke: #999;
+  stroke-opacity: 0.6;
+}
+
+/* SVG Node Styling */
+/* In modelNNVisualizer.css */
+
+/* Ensure the background of neurons is white */
+circle.node {
+  fill: #ffffff !important; /* White background for neuron circles */
+  stroke: #666;
   stroke-width: 2px;
 }
 

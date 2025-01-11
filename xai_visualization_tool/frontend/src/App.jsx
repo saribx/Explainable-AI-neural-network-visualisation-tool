@@ -129,16 +129,17 @@ function App() {
                         )}
 
                         {/* Display visualization results */}
+                        {/* durch das einfügen von .model-structure hier wurde die Ausgabe von acts gelöscht! */}
                         {visualizationData && (
                             <>
                                 <div className="code-block">
-                                    <pre>{JSON.stringify(visualizationData, null, 2)}</pre>
+                                    <pre>{JSON.stringify(visualizationData.model_structure, null, 2)}</pre>
                                 </div>
-                                <ModelNetworkVisualizer visualizationData={visualizationData} />
+                                <ModelNetworkVisualizer visualizationData={visualizationData}/>
                             </>
                         )}
                     </>
-                } />
+                }/>
                 {/* Neural Network Creation Page Route */}
                 <Route path="/create_NN" element={<CreateNN />} />
             </Routes>
