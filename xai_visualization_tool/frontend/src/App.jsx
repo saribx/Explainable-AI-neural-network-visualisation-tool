@@ -2,8 +2,8 @@ import { BrowserRouter as Router, Route, Routes, Link } from 'react-router-dom';
 import { useState } from 'react';
 import './App.css';
 import api from './api';
-import NNdrawer from "./NNdrawer";
-import ModelNetworkVisualizer from './modelNNVisualizer';
+import NNdrawer from "./NNdrawer.tsx";
+import ModelNetworkVisualizer from './modelNNVisualizer.tsx';
 
 /**
  * Main Application Component

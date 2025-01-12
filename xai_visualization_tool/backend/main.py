@@ -22,6 +22,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 import shutil
 
+
 class NetworkAnalyzer:
     """Handles neural network analysis and structure extraction."""
 
@@ -38,38 +39,43 @@ class NetworkAnalyzer:
         """
         layers = []
         for key, tensor in state_dict.items():
-            if 'weight' not in key:
+            if "weight" not in key:
                 continue
 
-            layer_num = int(key.split('.')[1])
+            layer_num = int(key.split(".")[1])
             shape = tensor.shape
 
             # Determine layer type and create layer info
             if layer_num == 0:
-                layers.append({
-                    "name": "Input Layer",
-                    "neurons": shape[1],
-                    "layer_type": "input"
-                })
-                layers.append({
-                    "name": f"Hidden Layer 1",
-                    "neurons": shape[0],
-                    "layer_type": "hidden"
-                })
+                layers.append(
+                    {"name": "Input Layer", "neurons": shape[1], "layer_type": "input"}
+                )
+                layers.append(
+                    {
+                        "name": f"Hidden Layer 1",
+                        "neurons": shape[0],
+                        "layer_type": "hidden",
+                    }
+                )
             elif layer_num == 4:
-                layers.append({
-                    "name": "Output Layer",
-                    "neurons": shape[0],
-                    "layer_type": "output"
-                })
+                layers.append(
+                    {
+                        "name": "Output Layer",
+                        "neurons": shape[0],
+                        "layer_type": "output",
+                    }
+                )
             else:
-                layers.append({
-                    "name": f"Hidden Layer {layer_num}",
-                    "neurons": shape[0],
-                    "layer_type": "hidden"
-                })
+                layers.append(
+                    {
+                        "name": f"Hidden Layer {layer_num}",
+                        "neurons": shape[0],
+                        "layer_type": "hidden",
+                    }
+                )
 
         return layers
+
 
 class FileHandler:
     """Manages file operations for model and activation data."""
@@ -80,7 +86,7 @@ class FileHandler:
         self.root_dir = Path(__file__).parent.parent
         self.example_files = {
             "model": self.root_dir / "linear_correlated_model.pt",
-            "activations": self.root_dir / "acts_linear_correlated_model.pt"
+            "activations": self.root_dir / "acts_linear_correlated_model.pt",
         }
 
     async def save_upload(self, file: UploadFile, file_type: str) -> Path:
@@ -115,13 +121,14 @@ class FileHandler:
             print(f"Error during file copy: {str(e)}")  # Debug print
             raise
 
+
 class NNVisualizationServer:
     """Main server class handling API endpoints and visualization logic."""
 
     def __init__(self):
         self.app = FastAPI(
             title="Neural Network Visualization Server",
-            description="API for neural network visualization and analysis"
+            description="API for neural network visualization and analysis",
         )
         self.file_handler = FileHandler()
         self.network_analyzer = NetworkAnalyzer()
@@ -144,13 +151,15 @@ class NNVisualizationServer:
         @self.app.post("/upload_model/")
         async def upload_model(file: UploadFile = File(...)):
             """Handles model file upload."""
-            self.model_path = await self.file_handler.save_upload(file, 'model')
+            self.model_path = await self.file_handler.save_upload(file, "model")
             return {"filename": file.filename}
 
         @self.app.post("/upload_activations/")
         async def upload_activations(file: UploadFile = File(...)):
             """Handles activation file upload."""
-            self.activations_path = await self.file_handler.save_upload(file, 'activations')
+            self.activations_path = await self.file_handler.save_upload(
+                file, "activations"
+            )
             return {"filename": file.filename}
 
         @self.app.get("/use_example/")
@@ -159,12 +168,13 @@ class NNVisualizationServer:
             try:
                 print("Current working directory:", os.getcwd())  # Debug print
                 paths = self.file_handler.copy_example_files()
-                self.model_path = paths['model']
-                self.activations_path = paths['activations']
+                self.model_path = paths["model"]
+                self.activations_path = paths["activations"]
                 return {"message": "Example files loaded successfully"}
             except Exception as e:
                 print(f"Error in use_example_files: {str(e)}")  # Debug print
                 import traceback
+
                 print(traceback.format_exc())  # Print full traceback
                 raise HTTPException(status_code=500, detail=str(e))
 
@@ -176,30 +186,27 @@ class NNVisualizationServer:
             """
             if not self.model_path or not self.activations_path:
                 raise HTTPException(
-                    status_code=404,
-                    detail="Model or activation files not found"
+                    status_code=404, detail="Model or activation files not found"
                 )
 
             try:
                 # Load model and activations
-                model = torch.load(
-                    self.model_path,
-                    map_location=torch.device('cpu')
-                )
+                model = torch.load(self.model_path, map_location=torch.device("cpu"))
                 activations = torch.load(
-                    self.activations_path,
-                    map_location=torch.device('cpu')
+                    self.activations_path, map_location=torch.device("cpu")
                 )
 
                 # Extract state dictionary
                 state_dict = (
-                    model.get('state_dict', model)
+                    model.get("state_dict", model)
                     if isinstance(model, dict)
                     else model.state_dict()
                 )
 
                 # Analyze model structure
-                network_structure = self.network_analyzer.analyze_model_structure(state_dict)
+                network_structure = self.network_analyzer.analyze_model_structure(
+                    state_dict
+                )
 
                 # Process activations
                 processed_activations = []
@@ -213,11 +220,12 @@ class NNVisualizationServer:
 
                 return {
                     "model_structure": network_structure,
-                    "activations": processed_activations
+                    "activations": processed_activations,
                 }
 
             except Exception as e:
                 raise HTTPException(status_code=500, detail=str(e))
+
 
 # Initialize server
 server = NNVisualizationServer()
@@ -225,4 +233,5 @@ app = server.app
 
 if __name__ == "__main__":
     import uvicorn
+
     uvicorn.run(app, host="0.0.0.0", port=8000)
