@@ -6,51 +6,61 @@
     display: flex;
     justify-content: center;
     align-items: center;
+    min-height: 900px;
+    position: relative;
 }
 
 .network-container {
     width: 100%;
-    max-width: 1400px;  /* Maximum width */
+    max-width: 1400px;
     margin: 0 auto;
-    aspect-ratio: 16/9;  /* Maintains aspect ratio */
-    overflow: visible;
+    aspect-ratio: 16/9;
     background: white;
     border-radius: 8px;
     padding: 1rem;
-    display: flex;
-    justify-content: center;
-    align-items: center;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
 }
 
-/* SVG Container */
-.network-container svg {
-    width: 100% !important;
-    height: 100% !important;
-    display: block;
-    max-height: 90vh;  /* Prevent too large height */
-}
-
-/* Network Node Styling */
+/* SVG Elements */
 .network-node {
-    fill: white !important;
+    fill: white;
     stroke: #333;
     stroke-width: 1.5px;
+    transition: fill 0.3s ease;
 }
 
-/* Network Connection Styling */
+.network-node:hover {
+    fill: #f0f0f0;
+}
+
 .network-link {
-    stroke: #999;
-    stroke-opacity: 0.15;
-    stroke-width: 0.5px;
+    stroke: #000000;
+    stroke-opacity: 0.2;
+    stroke-width: 1px;
+    pointer-events: none;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    shape-rendering: geometricPrecision;
 }
 
-/* Histogram Styling */
+.layer-label {
+    font-size: 12px;
+    fill: #666;
+    text-anchor: middle;
+}
+
+/* Histogram Styles */
 .histogram-bar {
-    fill: #4f9deb !important;
+    fill: #4f9deb;
     opacity: 0.8;
 }
 
-/* Modal Styles - unverändert ... */
+.histogram-group rect {
+    fill: #4f9deb;
+    opacity: 0.8;
+}
+
+/* Modal Styles */
 .histogram-modal-overlay {
     position: fixed;
     top: 0;
@@ -69,10 +79,45 @@
     padding: 1.5rem;
     border-radius: 8px;
     width: 600px;
-    height: 500px;
+    max-width: 90vw;
     position: relative;
     box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-    display: flex;
-    flex-direction: column;
-    align-items: center;
+}
+
+.close-button {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    background: none;
+    border: none;
+    font-size: 24px;
+    cursor: pointer;
+    color: #666;
+}
+
+.close-button:hover {
+    color: #333;
+}
+
+/* Responsive Styles */
+@media (max-width: 768px) {
+    .model-network-visualization {
+        padding: 0.5rem;
+    }
+
+    .network-container {
+        padding: 0.5rem;
+    }
+
+    .histogram-modal-content {
+        width: 95vw;
+        padding: 1rem;
+    }
+}
+
+/* Zoom Instructions */
+.zoom-instruction {
+    font-size: 12px;
+    fill: #666;
+    user-select: none;
 }

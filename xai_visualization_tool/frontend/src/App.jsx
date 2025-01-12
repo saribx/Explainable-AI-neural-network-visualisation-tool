@@ -6,8 +6,8 @@ import NNdrawer from "./NNdrawer.tsx";
 import ModelNetworkVisualizer from './modelNNVisualizer.tsx';
 
 /**
- * Main Application Component
- * Handles file uploads, example loading, and visualization of neural networks
+ * Main Application Component for Neural Network Visualization
+ * Provides file upload functionality and visualization rendering
  */
 function App() {
     const [isModelFileUploaded, setIsModelFileUploaded] = useState(false);
@@ -16,8 +16,8 @@ function App() {
     const [Afile, setAFile] = useState(null);
     const [visualizationData, setVisualizationData] = useState(null);
     const [error, setError] = useState(null);
+    const [uploadSuccess, setUploadSuccess] = useState({ model: false, act: false });
 
-    // Handle model file upload
     async function handleModelFileInput(e) {
         const files = e.target.files;
         if (files) {
@@ -27,11 +27,10 @@ function App() {
             formData.append('file', files[0]);
             try {
                 await api.post('/upload_model/', formData, {
-                    headers: {
-                        'Content-Type': 'multipart/form-data'
-                    }
+                    headers: { 'Content-Type': 'multipart/form-data' }
                 });
                 setError(null);
+                setUploadSuccess(prev => ({ ...prev, model: true }));
             } catch (err) {
                 setError(`Error uploading model file: ${err.message}`);
                 console.error('Model upload error:', err);
@@ -39,7 +38,6 @@ function App() {
         }
     }
 
-    // Handle activation file upload
     async function handleActFileInput(e) {
         const Afiles = e.target.files;
         if (Afiles) {
@@ -49,11 +47,10 @@ function App() {
             formData.append('file', Afiles[0]);
             try {
                 await api.post('/upload_activations/', formData, {
-                    headers: {
-                        'Content-Type': 'multipart/form-data'
-                    }
+                    headers: { 'Content-Type': 'multipart/form-data' }
                 });
                 setError(null);
+                setUploadSuccess(prev => ({ ...prev, act: true }));
             } catch (err) {
                 setError(`Error uploading activation file: ${err.message}`);
                 console.error('Activation upload error:', err);
@@ -61,7 +58,6 @@ function App() {
         }
     }
 
-    // Create and trigger hidden file input for model upload
     function handleModelUploadButtonClick() {
         const input = document.createElement('input');
         input.type = 'file';
@@ -70,7 +66,6 @@ function App() {
         input.click();
     }
 
-    // Create and trigger hidden file input for activation file upload
     function handleActUploadButtonClick() {
         const input = document.createElement('input');
         input.type = 'file';
@@ -79,7 +74,6 @@ function App() {
         input.click();
     }
 
-    // Load example files
     async function handleLoadExample() {
         try {
             const response = await api.get('/use_example/');
@@ -89,6 +83,7 @@ function App() {
                 setFile({ name: 'linear_correlated_model.pt' });
                 setAFile({ name: 'acts_linear_correlated_model.pt' });
                 setError(null);
+                setUploadSuccess({ model: true, act: true });
             }
         } catch (err) {
             setError(`Error loading example files: ${err.message}`);
@@ -96,7 +91,6 @@ function App() {
         }
     }
 
-    // Fetch visualization data
     async function handleVisualizeButtonClick() {
         try {
             const response = await api.get('/');
@@ -125,10 +119,18 @@ function App() {
 
                         <div className="code-block">
                             <p>With the simple upload of your trained model and its activations saved as .pt file</p>
-                            <p>You can see the activations visually with histograms</p>
+                            <p>you can see the activations visually with histograms inside neurons</p>
+                            <p>and the edge colors show connection strength between neurons:</p>
+                            <code>
+                                <span style={{color: '#ff0000'}}>Red</span>: Strong positive/excitatory connection<br/>
+                                <span style={{color: '#0000ff'}}>Blue</span>: Strong negative/inhibitory connection<br/>
+                                <span style={{color: '#ffffff'}}>White</span>: Weak/no connection<br/>
+                            </code>
+                            <p></p>
                             <p>To generate the activations you can use the following code:</p>
                             <code>
-                                <span className="keyword">acts</span> = <span className="function">collect_activation</span>(model_linear_correlated_data,
+                                <span className="keyword">acts</span> = <span
+                                className="function">collect_activation</span>(model_linear_correlated_data,
                                 model_linear_correlated_data_dict[&quot;x_train&quot;])<br/>
                                 <span className="function">torch.save</span>(acts, &apos;activations.pt&apos;)
                             </code>
@@ -138,21 +140,48 @@ function App() {
 
                         <button onClick={handleLoadExample} className="upload-button">
                             Load Example Files
+                            {uploadSuccess.model && uploadSuccess.act && (
+                                <svg className="success-check" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                     strokeWidth="2">
+                                    <polyline points="20 6 9 17 4 12"/>
+                                </svg>
+                            )}
                         </button>
 
                         <button onClick={handleModelUploadButtonClick} className="upload-button">
+                            <svg className="upload-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                 strokeWidth="2">
+                                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                                <polyline points="7 10 12 15 17 10" />
+                                <line x1="12" y1="15" x2="12" y2="3" />
+                            </svg>
                             Upload Model
+                            {uploadSuccess.model && (
+                                <svg className="success-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                    <polyline points="20 6 9 17 4 12" />
+                                </svg>
+                            )}
                         </button>
-                        {isModelFileUploaded && file &&
+                        {isModelFileUploaded && file && (
                             <p className="upload-text">Model File Uploaded: {file.name}</p>
-                        }
+                        )}
 
                         <button onClick={handleActUploadButtonClick} className="upload-button">
+                            <svg className="upload-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                                <polyline points="7 10 12 15 17 10" />
+                                <line x1="12" y1="15" x2="12" y2="3" />
+                            </svg>
                             Upload Activations
+                            {uploadSuccess.act && (
+                                <svg className="success-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                    <polyline points="20 6 9 17 4 12" />
+                                </svg>
+                            )}
                         </button>
-                        {isActFileUploaded && Afile &&
+                        {isActFileUploaded && Afile && (
                             <p className="upload-text">Activation File Uploaded: {Afile.name}</p>
-                        }
+                        )}
 
                         <button
                             onClick={handleVisualizeButtonClick}

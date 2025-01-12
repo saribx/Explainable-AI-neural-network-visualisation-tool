@@ -9,8 +9,8 @@ interface NetworkConfig {
 
 const NNdrawer = () => {
     const [networkConfig, setNetworkConfig] = useState<NetworkConfig>({
-        inputNodes: 3,
-        hiddenLayers: [4],
+        inputNodes: 4,
+        hiddenLayers: [7,5],
         outputNodes: 2
     });
 
@@ -90,8 +90,6 @@ const NNdrawer = () => {
 
     return (
         <div className="create-nn-container">
-            <h1>Create Neural Network</h1>
-
             <div className="nn-controls">
                 <div className="nn-control-group">
                     <label>Input Nodes</label>
@@ -100,10 +98,10 @@ const NNdrawer = () => {
                         value={networkConfig.inputNodes}
                         onChange={(e) => setNetworkConfig(prev => ({
                             ...prev,
-                            inputNodes: Math.max(1, Math.min(25, parseInt(e.target.value) || 1))
+                            inputNodes: Math.max(1, Math.min(15, parseInt(e.target.value) || 1))
                         }))}
                         min="1"
-                        max="25"
+                        max="15"
                     />
                 </div>
 
@@ -117,11 +115,11 @@ const NNdrawer = () => {
                                 value={nodes}
                                 onChange={(e) => {
                                     const newLayers = [...networkConfig.hiddenLayers];
-                                    newLayers[idx] = Math.max(1, Math.min(25, parseInt(e.target.value) || 1));
+                                    newLayers[idx] = Math.max(1, Math.min(15, parseInt(e.target.value) || 1));
                                     setNetworkConfig(prev => ({ ...prev, hiddenLayers: newLayers }));
                                 }}
                                 min="1"
-                                max="25"
+                                max="15"
                             />
                         ))}
                         {networkConfig.hiddenLayers.length < 5 && (
@@ -142,10 +140,10 @@ const NNdrawer = () => {
                         value={networkConfig.outputNodes}
                         onChange={(e) => setNetworkConfig(prev => ({
                             ...prev,
-                            outputNodes: Math.max(1, Math.min(25, parseInt(e.target.value) || 1))
+                            outputNodes: Math.max(1, Math.min(15, parseInt(e.target.value) || 1))
                         }))}
                         min="1"
-                        max="25"
+                        max="15"
                     />
                 </div>
             </div>

@@ -14,67 +14,110 @@ Features:
 
 import os
 from pathlib import Path
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Tuple
 
 import torch
+import numpy as np
 from fastapi import FastAPI, HTTPException, File, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
 import shutil
 
 
 class NetworkAnalyzer:
-    """Handles neural network analysis and structure extraction."""
+    """
+    Handles neural network analysis and structure extraction.
+    Provides methods for analyzing network architecture, extracting weights,
+    and preparing visualization data for both activations and edge weights.
+    """
 
     @staticmethod
-    def analyze_model_structure(state_dict: Dict) -> List[Dict]:
+    def analyze_model_structure(state_dict: Dict) -> Tuple[List[Dict], List[np.ndarray]]:
         """
-        Analyzes the structure of a neural network from its state dictionary.
+        Analyzes the structure of a neural network and extracts weight matrices.
 
         Args:
             state_dict: PyTorch state dictionary containing model parameters
 
         Returns:
-            List of dictionaries containing layer information
+            Tuple containing:
+            - List of dictionaries containing layer information
+            - List of weight matrices between layers
         """
         layers = []
-        for key, tensor in state_dict.items():
-            if "weight" not in key:
-                continue
+        weight_matrices = []
 
-            layer_num = int(key.split(".")[1])
+        # Extract all weight keys and sort them
+        weight_keys = sorted([k for k in state_dict.keys() if "weight" in k],
+                             key=lambda x: int(x.split(".")[1]))
+
+        # Process each weight matrix
+        for idx, key in enumerate(weight_keys):
+            tensor = state_dict[key]
             shape = tensor.shape
+            weight_matrix = tensor.detach().numpy()
+            weight_matrices.append(weight_matrix)
 
-            # Determine layer type and create layer info
-            if layer_num == 0:
-                layers.append(
-                    {"name": "Input Layer", "neurons": shape[1], "layer_type": "input"}
-                )
-                layers.append(
-                    {
-                        "name": f"Hidden Layer 1",
-                        "neurons": shape[0],
-                        "layer_type": "hidden",
-                    }
-                )
-            elif layer_num == 4:
-                layers.append(
-                    {
-                        "name": "Output Layer",
-                        "neurons": shape[0],
-                        "layer_type": "output",
-                    }
-                )
+            # Add layer information
+            if idx == 0:
+                # Input layer
+                layers.append({
+                    "name": "Input Layer",
+                    "neurons": shape[1],
+                    "layer_type": "input"
+                })
+                # First hidden layer
+                layers.append({
+                    "name": f"Hidden Layer 1",
+                    "neurons": shape[0],
+                    "layer_type": "hidden"
+                })
+            elif idx == len(weight_keys) - 1:
+                # Output layer
+                layers.append({
+                    "name": "Output Layer",
+                    "neurons": shape[0],
+                    "layer_type": "output"
+                })
             else:
-                layers.append(
-                    {
-                        "name": f"Hidden Layer {layer_num}",
-                        "neurons": shape[0],
-                        "layer_type": "hidden",
-                    }
-                )
+                # Additional hidden layers
+                layers.append({
+                    "name": f"Hidden Layer {idx+1}",
+                    "neurons": shape[0],
+                    "layer_type": "hidden"
+                })
 
-        return layers
+        return layers, weight_matrices
+
+    @staticmethod
+    def process_network_data(state_dict: Dict, activations: List) -> Dict:
+        """
+        Processes both network structure and data for visualization.
+
+        Args:
+            state_dict: PyTorch state dictionary containing model parameters
+            activations: List of activation values for each layer
+
+        Returns:
+            Dictionary containing model structure, activations, and weight matrices
+        """
+        layers, weight_matrices = NetworkAnalyzer.analyze_model_structure(state_dict)
+
+        # Process weight matrices into visualization format
+        processed_weights = []
+        for matrix in weight_matrices:
+            # Normalize weights to [-1, 1] range for visualization
+            max_abs = np.max(np.abs(matrix))
+            if max_abs > 0:
+                normalized = matrix / max_abs
+            else:
+                normalized = matrix
+            processed_weights.append(normalized.tolist())
+
+        return {
+            "model_structure": layers,
+            "activations": activations,
+            "weight_matrices": processed_weights
+        }
 
 
 class FileHandler:
@@ -100,25 +143,22 @@ class FileHandler:
         """Copies example files to the temporary directory."""
         paths = {}
         try:
-            print("Looking for files in:", self.root_dir)  # Debug print
+            print("Looking for files in:", self.root_dir)
             for file_type, src_path in self.example_files.items():
-                print(f"Checking for {file_type} file at: {src_path}")  # Debug print
+                print(f"Checking for {file_type} file at: {src_path}")
                 if not src_path.exists():
                     raise FileNotFoundError(f"Example file not found: {src_path}")
 
                 dest_path = self.upload_dir / src_path.name
-                print(f"Copying to: {dest_path}")  # Debug print
+                print(f"Copying to: {dest_path}")
 
-                # Ensure the temp directory exists
                 self.upload_dir.mkdir(parents=True, exist_ok=True)
-
-                # Copy the file
                 shutil.copy(str(src_path), str(dest_path))
                 paths[file_type] = dest_path
 
             return paths
         except Exception as e:
-            print(f"Error during file copy: {str(e)}")  # Debug print
+            print(f"Error during file copy: {str(e)}")
             raise
 
 
@@ -145,6 +185,44 @@ class NNVisualizationServer:
 
         self.register_routes()
 
+    async def analyze_network(self):
+        """
+        Analyzes network structure and data.
+        Returns combined model structure, activation data, and weight matrices.
+        """
+        if not self.model_path or not self.activations_path:
+            raise HTTPException(
+                status_code=404, detail="Model or activation files not found"
+            )
+
+        try:
+            model = torch.load(self.model_path, map_location=torch.device("cpu"))
+            activations = torch.load(
+                self.activations_path, map_location=torch.device("cpu")
+            )
+
+            state_dict = (
+                model.get("state_dict", model)
+                if isinstance(model, dict)
+                else model.state_dict()
+            )
+
+            processed_activations = []
+            if isinstance(activations, torch.Tensor):
+                processed_activations = activations.tolist()
+            elif isinstance(activations, list):
+                processed_activations = [
+                    tensor.tolist() if isinstance(tensor, torch.Tensor) else tensor
+                    for tensor in activations
+                ]
+
+            return self.network_analyzer.process_network_data(
+                state_dict, processed_activations
+            )
+
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=str(e))
+
     def register_routes(self):
         """Registers all API routes."""
 
@@ -166,65 +244,21 @@ class NNVisualizationServer:
         async def use_example_files():
             """Loads example model and activation files."""
             try:
-                print("Current working directory:", os.getcwd())  # Debug print
+                print("Current working directory:", os.getcwd())
                 paths = self.file_handler.copy_example_files()
                 self.model_path = paths["model"]
                 self.activations_path = paths["activations"]
                 return {"message": "Example files loaded successfully"}
             except Exception as e:
-                print(f"Error in use_example_files: {str(e)}")  # Debug print
+                print(f"Error in use_example_files: {str(e)}")
                 import traceback
-
-                print(traceback.format_exc())  # Print full traceback
+                print(traceback.format_exc())
                 raise HTTPException(status_code=500, detail=str(e))
 
         @self.app.get("/")
-        async def analyze_network():
-            """
-            Analyzes network structure and activations.
-            Returns combined model structure and activation data.
-            """
-            if not self.model_path or not self.activations_path:
-                raise HTTPException(
-                    status_code=404, detail="Model or activation files not found"
-                )
-
-            try:
-                # Load model and activations
-                model = torch.load(self.model_path, map_location=torch.device("cpu"))
-                activations = torch.load(
-                    self.activations_path, map_location=torch.device("cpu")
-                )
-
-                # Extract state dictionary
-                state_dict = (
-                    model.get("state_dict", model)
-                    if isinstance(model, dict)
-                    else model.state_dict()
-                )
-
-                # Analyze model structure
-                network_structure = self.network_analyzer.analyze_model_structure(
-                    state_dict
-                )
-
-                # Process activations
-                processed_activations = []
-                if isinstance(activations, torch.Tensor):
-                    processed_activations = activations.tolist()
-                elif isinstance(activations, list):
-                    processed_activations = [
-                        tensor.tolist() if isinstance(tensor, torch.Tensor) else tensor
-                        for tensor in activations
-                    ]
-
-                return {
-                    "model_structure": network_structure,
-                    "activations": processed_activations,
-                }
-
-            except Exception as e:
-                raise HTTPException(status_code=500, detail=str(e))
+        async def root():
+            """Root endpoint that analyzes network structure and returns visualization data."""
+            return await self.analyze_network()
 
 
 # Initialize server
@@ -233,5 +267,4 @@ app = server.app
 
 if __name__ == "__main__":
     import uvicorn
-
     uvicorn.run(app, host="0.0.0.0", port=8000)
