@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react';
 // @ts-ignore
 import * as d3 from 'd3';
+import './NNdrawer.css'
+
 interface NetworkConfig {
     inputNodes: number;
     hiddenLayers: number[];
