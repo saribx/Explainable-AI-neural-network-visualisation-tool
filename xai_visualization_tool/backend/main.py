@@ -31,7 +31,9 @@ class NetworkAnalyzer:
     """
 
     @staticmethod
-    def analyze_model_structure(state_dict: Dict) -> Tuple[List[Dict], List[np.ndarray]]:
+    def analyze_model_structure(
+        state_dict: Dict,
+    ) -> Tuple[List[Dict], List[np.ndarray]]:
         """
         Analyzes the structure of a neural network and extracts weight matrices.
 
@@ -47,8 +49,10 @@ class NetworkAnalyzer:
         weight_matrices = []
 
         # Extract all weight keys and sort them
-        weight_keys = sorted([k for k in state_dict.keys() if "weight" in k],
-                             key=lambda x: int(x.split(".")[1]))
+        weight_keys = sorted(
+            [k for k in state_dict.keys() if "weight" in k],
+            key=lambda x: int(x.split(".")[1]),
+        )
 
         # Process each weight matrix
         for idx, key in enumerate(weight_keys):
@@ -60,31 +64,35 @@ class NetworkAnalyzer:
             # Add layer information
             if idx == 0:
                 # Input layer
-                layers.append({
-                    "name": "Input Layer",
-                    "neurons": shape[1],
-                    "layer_type": "input"
-                })
+                layers.append(
+                    {"name": "Input Layer", "neurons": shape[1], "layer_type": "input"}
+                )
                 # First hidden layer
-                layers.append({
-                    "name": f"Hidden Layer 1",
-                    "neurons": shape[0],
-                    "layer_type": "hidden"
-                })
+                layers.append(
+                    {
+                        "name": f"Hidden Layer 1",
+                        "neurons": shape[0],
+                        "layer_type": "hidden",
+                    }
+                )
             elif idx == len(weight_keys) - 1:
                 # Output layer
-                layers.append({
-                    "name": "Output Layer",
-                    "neurons": shape[0],
-                    "layer_type": "output"
-                })
+                layers.append(
+                    {
+                        "name": "Output Layer",
+                        "neurons": shape[0],
+                        "layer_type": "output",
+                    }
+                )
             else:
                 # Additional hidden layers
-                layers.append({
-                    "name": f"Hidden Layer {idx+1}",
-                    "neurons": shape[0],
-                    "layer_type": "hidden"
-                })
+                layers.append(
+                    {
+                        "name": f"Hidden Layer {idx+1}",
+                        "neurons": shape[0],
+                        "layer_type": "hidden",
+                    }
+                )
 
         return layers, weight_matrices
 
@@ -116,7 +124,7 @@ class NetworkAnalyzer:
         return {
             "model_structure": layers,
             "activations": activations,
-            "weight_matrices": processed_weights
+            "weight_matrices": processed_weights,
         }
 
 
@@ -252,6 +260,7 @@ class NNVisualizationServer:
             except Exception as e:
                 print(f"Error in use_example_files: {str(e)}")
                 import traceback
+
                 print(traceback.format_exc())
                 raise HTTPException(status_code=500, detail=str(e))
 
@@ -267,4 +276,5 @@ app = server.app
 
 if __name__ == "__main__":
     import uvicorn
+
     uvicorn.run(app, host="0.0.0.0", port=8000)

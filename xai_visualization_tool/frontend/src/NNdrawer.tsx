@@ -1,5 +1,5 @@
+/* This file is for the page "Create NN" */
 import { useState, useEffect } from 'react';
-// @ts-ignore
 import * as d3 from 'd3';
 import './NNdrawer.css'
 

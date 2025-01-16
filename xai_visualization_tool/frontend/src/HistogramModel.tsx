@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type FC } from 'react';
+import { useEffect, useRef, type FC } from 'react';
 import * as d3 from 'd3';
 import './HistogramModel';
 
@@ -16,6 +16,9 @@ export interface ExtendedHistogramBin extends d3.Bin {
 const HistogramModel: FC<HistogramModalProps> = ({ data, onClose }) => {
     const modalRef = useRef(null);
 
+    /**
+     * Renders the histogram when the data changes.
+     */
     useEffect(() => {
         if (!modalRef.current || !data) return;
         d3.select(modalRef.current).selectAll("*").remove();
@@ -80,6 +83,9 @@ const HistogramModel: FC<HistogramModalProps> = ({ data, onClose }) => {
             .text('Frequency');
     }, [data]);
 
+    /**
+     * Renders the modal with the histogram chart and close button.
+     */
     return (
         <div className="histogram-modal-overlay" onClick={onClose}>
             <div className="histogram-modal-content" onClick={(e) => e.stopPropagation()}>

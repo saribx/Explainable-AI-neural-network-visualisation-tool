@@ -6,7 +6,6 @@ import NNdrawer from "./NNdrawer.tsx";
 import ModelNetworkVisualizer from './modelNNVisualizer.tsx';
 
 /**
- * Main Application Component for Neural Network Visualization
  * Provides file upload functionality and visualization rendering
  */
 function App() {
@@ -18,6 +17,10 @@ function App() {
     const [error, setError] = useState(null);
     const [uploadSuccess, setUploadSuccess] = useState({ model: false, act: false });
 
+    /**
+     * Handles the model file input event and uploads the file
+     * @param {Event} e - The file input event
+     */
     async function handleModelFileInput(e) {
         const files = e.target.files;
         if (files) {
@@ -38,6 +41,10 @@ function App() {
         }
     }
 
+    /**
+     * Handles the activation file input event and uploads the file
+     * @param {Event} e - The file input event
+     */
     async function handleActFileInput(e) {
         const Afiles = e.target.files;
         if (Afiles) {
@@ -58,6 +65,9 @@ function App() {
         }
     }
 
+    /**
+     * Handles the model upload button click event, triggering the file input dialog
+     */
     function handleModelUploadButtonClick() {
         const input = document.createElement('input');
         input.type = 'file';
@@ -66,6 +76,9 @@ function App() {
         input.click();
     }
 
+    /**
+     * Handles the activation upload button click event, triggering the file input dialog
+     */
     function handleActUploadButtonClick() {
         const input = document.createElement('input');
         input.type = 'file';
@@ -74,6 +87,9 @@ function App() {
         input.click();
     }
 
+    /**
+     * Loads example files when the "Load Example Files" button is clicked
+     */
     async function handleLoadExample() {
         try {
             const response = await api.get('/use_example/');
@@ -91,6 +107,9 @@ function App() {
         }
     }
 
+    /**
+     * Handles the "Visualize" button click event, fetching the visualization data
+     */
     async function handleVisualizeButtonClick() {
         try {
             const response = await api.get('/');

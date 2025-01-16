@@ -1,9 +1,8 @@
 import { useEffect, useRef, useState, type FC } from 'react';
 import * as d3 from 'd3';
 import './modelNNVisualizer.css';
-import { ExtendedHistogramBin } from './HistogramModel.tsx';
-import HistogramModel from './HistogramModel.tsx';
-import React from 'react';
+import { ExtendedHistogramBin } from './HistogramModel';
+import HistogramModel from './HistogramModel';
 
 interface LayerStructure {
     name: string;
