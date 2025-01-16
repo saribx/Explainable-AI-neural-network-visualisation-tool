@@ -1,5 +1,5 @@
-import { BrowserRouter as Router, Route, Routes, Link } from 'react-router-dom';
-import { useState } from 'react';
+import {BrowserRouter as Router, Route, Routes, Link} from 'react-router-dom';
+import {useState} from 'react';
 import './App.css';
 import api from './api';
 import NNdrawer from "./NNdrawer.tsx";
@@ -15,7 +15,7 @@ function App() {
     const [Afile, setAFile] = useState(null);
     const [visualizationData, setVisualizationData] = useState(null);
     const [error, setError] = useState(null);
-    const [uploadSuccess, setUploadSuccess] = useState({ model: false, act: false });
+    const [uploadSuccess, setUploadSuccess] = useState({model: false, act: false});
 
     /**
      * Handles the model file input event and uploads the file
@@ -30,10 +30,10 @@ function App() {
             formData.append('file', files[0]);
             try {
                 await api.post('/upload_model/', formData, {
-                    headers: { 'Content-Type': 'multipart/form-data' }
+                    headers: {'Content-Type': 'multipart/form-data'}
                 });
                 setError(null);
-                setUploadSuccess(prev => ({ ...prev, model: true }));
+                setUploadSuccess(prev => ({...prev, model: true}));
             } catch (err) {
                 setError(`Error uploading model file: ${err.message}`);
                 console.error('Model upload error:', err);
@@ -54,10 +54,10 @@ function App() {
             formData.append('file', Afiles[0]);
             try {
                 await api.post('/upload_activations/', formData, {
-                    headers: { 'Content-Type': 'multipart/form-data' }
+                    headers: {'Content-Type': 'multipart/form-data'}
                 });
                 setError(null);
-                setUploadSuccess(prev => ({ ...prev, act: true }));
+                setUploadSuccess(prev => ({...prev, act: true}));
             } catch (err) {
                 setError(`Error uploading activation file: ${err.message}`);
                 console.error('Activation upload error:', err);
@@ -96,10 +96,10 @@ function App() {
             if (response.data.message === 'Example files loaded successfully') {
                 setIsModelFileUploaded(true);
                 setIsActFileUploaded(true);
-                setFile({ name: 'linear_correlated_model.pt' });
-                setAFile({ name: 'acts_linear_correlated_model.pt' });
+                setFile({name: 'linear_correlated_model.pt'});
+                setAFile({name: 'acts_linear_correlated_model.pt'});
                 setError(null);
-                setUploadSuccess({ model: true, act: true });
+                setUploadSuccess({model: true, act: true});
             }
         } catch (err) {
             setError(`Error loading example files: ${err.message}`);
@@ -171,13 +171,14 @@ function App() {
                             <svg className="upload-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor"
                                  strokeWidth="2">
                                 <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
-                                <polyline points="7 10 12 15 17 10" />
-                                <line x1="12" y1="15" x2="12" y2="3" />
+                                <polyline points="7 10 12 15 17 10"/>
+                                <line x1="12" y1="15" x2="12" y2="3"/>
                             </svg>
                             Upload Model
                             {uploadSuccess.model && (
-                                <svg className="success-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                                    <polyline points="20 6 9 17 4 12" />
+                                <svg className="success-check" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                     strokeWidth="2">
+                                    <polyline points="20 6 9 17 4 12"/>
                                 </svg>
                             )}
                         </button>
@@ -186,15 +187,17 @@ function App() {
                         )}
 
                         <button onClick={handleActUploadButtonClick} className="upload-button">
-                            <svg className="upload-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-                                <polyline points="7 10 12 15 17 10" />
-                                <line x1="12" y1="15" x2="12" y2="3" />
+                            <svg className="upload-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                 strokeWidth="2">
+                                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                                <polyline points="7 10 12 15 17 10"/>
+                                <line x1="12" y1="15" x2="12" y2="3"/>
                             </svg>
                             Upload Activations
                             {uploadSuccess.act && (
-                                <svg className="success-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                                    <polyline points="20 6 9 17 4 12" />
+                                <svg className="success-check" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                     strokeWidth="2">
+                                    <polyline points="20 6 9 17 4 12"/>
                                 </svg>
                             )}
                         </button>
@@ -212,9 +215,12 @@ function App() {
                         {visualizationData && (
                             <>
                                 <div className="code-block">
+                                    <h4>Model Structure:</h4>
                                     <pre>{JSON.stringify(visualizationData.model_structure, null, 2)}</pre>
+                                    <h4>Activation Data Structure:</h4>
+                                    <pre>{visualizationData.activation_info}</pre>
                                 </div>
-                                <ModelNetworkVisualizer visualizationData={visualizationData} />
+                                <ModelNetworkVisualizer visualizationData={visualizationData}/>
                             </>
                         )}
                     </>
@@ -223,7 +229,7 @@ function App() {
                 <Route path="/create_NN" element={
                     <div className="create-nn-container">
                         <h1 className="H">Create Neural Network</h1>
-                        <NNdrawer />
+                        <NNdrawer/>
                     </div>
                 }/>
             </Routes>

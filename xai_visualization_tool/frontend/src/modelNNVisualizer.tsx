@@ -1,7 +1,7 @@
-import { useEffect, useRef, useState, type FC } from 'react';
+import {useEffect, useRef, useState, type FC} from 'react';
 import * as d3 from 'd3';
 import './modelNNVisualizer.css';
-import { ExtendedHistogramBin } from './HistogramModel';
+import {ExtendedHistogramBin,} from './types';
 import HistogramModel from './HistogramModel';
 
 interface LayerStructure {
@@ -12,13 +12,11 @@ interface LayerStructure {
 
 interface VisualizationData {
     model_structure: LayerStructure[];
-    activations: number[][];
+    activations: {
+        values: number[][];
+        targets: number[];
+    }[];
     weight_matrices: number[][][];
-}
-
-interface HistogramModalProps {
-    data: number[];
-    onClose: () => void;
 }
 
 interface ConnectionData {
@@ -34,15 +32,20 @@ interface ConnectionData {
 interface NeuronData {
     x: number;
     y: number;
-    data: number[];
+    values: number[];
+    targets: number[];
+    layerIndex: number;
+    neuronIndex: number;
 }
 
-
-
-
-const ModelNetworkVisualizer: FC<{ visualizationData: VisualizationData }> = ({ visualizationData }) => {
+const ModelNetworkVisualizer: FC<{ visualizationData: VisualizationData }> = ({visualizationData}) => {
     const containerRef = useRef(null);
-    const [selectedNeuron, setSelectedNeuron] = useState(null);
+    const [selectedNeuron, setSelectedNeuron] = useState<{
+        values: number[];
+        targets: number[];
+        layerIndex: number;
+        neuronIndex: number;
+    } | null>(null);
     const [connectionFilter, setConnectionFilter] = useState({
         showAll: true,
         showPositive: false,
@@ -54,9 +57,10 @@ const ModelNetworkVisualizer: FC<{ visualizationData: VisualizationData }> = ({ 
 
     useEffect(() => {
         if (!visualizationData || !containerRef.current) return;
+
         d3.select(containerRef.current).selectAll("*").remove();
 
-        const margin = { top: 200, right: 50, bottom: 50, left: 50 };
+        const margin = {top: 200, right: 50, bottom: 50, left: 50};
         const width = 1200;
         const height = 800;
         const neuronRadius = 25;
@@ -76,6 +80,7 @@ const ModelNetworkVisualizer: FC<{ visualizationData: VisualizationData }> = ({ 
         const legendWidth = 800;
         const legendHeight = 20;
         const legendX = (width - legendWidth) / 2;
+
         const legendScale = d3.scaleLinear()
             .domain([-1, 1])
             .range([0, legendWidth]);
@@ -107,7 +112,6 @@ const ModelNetworkVisualizer: FC<{ visualizationData: VisualizationData }> = ({ 
             .text('Show connections:')
             .style('font-size', '12px');
 
-        // Function to update connection visibility
         const updateConnections = (newFilter: typeof connectionFilter) => {
             zoomGroup.selectAll('.network-link')
                 .style('visibility', (d: ConnectionData) => {
@@ -118,11 +122,9 @@ const ModelNetworkVisualizer: FC<{ visualizationData: VisualizationData }> = ({ 
                 });
         };
 
-        // Calculate center position for options
-        const totalWidth = 400; // Gesamtbreite der Optionen
-        const startX = (legendWidth - totalWidth) / 2; // Zentrierte Startposition
+        const totalWidth = 400;
+        const startX = (legendWidth - totalWidth) / 2;
 
-        // Modified option creation function
         const createOption = (x: number, label: string, checked: boolean, filterType: 'showAll' | 'showPositive' | 'showNegative') => {
             const option = filterControls.append('g')
                 .attr('transform', `translate(${x}, -5)`)
@@ -138,7 +140,6 @@ const ModelNetworkVisualizer: FC<{ visualizationData: VisualizationData }> = ({ 
                     setConnectionFilter(newFilter);
                     updateConnections(newFilter);
 
-                    // Update all options' colors
                     filterControls.selectAll('.filter-option')
                         .attr('fill', (d, i, nodes) => {
                             const optionType = nodes[i].getAttribute('data-type');
@@ -150,7 +151,6 @@ const ModelNetworkVisualizer: FC<{ visualizationData: VisualizationData }> = ({ 
                         });
                 });
 
-            // Label with dynamic color
             option.append('text')
                 .attr('class', 'filter-option')
                 .attr('data-type', filterType)
@@ -159,11 +159,10 @@ const ModelNetworkVisualizer: FC<{ visualizationData: VisualizationData }> = ({ 
                 .text(label)
                 .attr('fill', checked ? '#2563eb' : '#666')
                 .attr('font-weight', 'bold')
-                .style('font-size', '14px') // Größere Schrift
-                .style('letter-spacing', '0.5px'); // Bessere Lesbarkeit
+                .style('font-size', '14px')
+                .style('letter-spacing', '0.5px');
         };
 
-        // Create options with correct filter types
         createOption(startX, 'All', connectionFilter.showAll, 'showAll');
         createOption(startX + 140, 'Strong Positive', connectionFilter.showPositive, 'showPositive');
         createOption(startX + 300, 'Strong Negative', connectionFilter.showNegative, 'showNegative');
@@ -187,7 +186,7 @@ const ModelNetworkVisualizer: FC<{ visualizationData: VisualizationData }> = ({ 
             .attr('text-anchor', 'middle')
             .text('Connection Weights');
 
-        const { model_structure, activations, weight_matrices } = visualizationData;
+        const {model_structure, activations, weight_matrices} = visualizationData;
         const layerSpacing = width / (model_structure.length - 1);
         const neuronSpacingFactor = 2;
 
@@ -206,9 +205,11 @@ const ModelNetworkVisualizer: FC<{ visualizationData: VisualizationData }> = ({ 
             .call(zoom.transform, d3.zoomIdentity.translate(margin.left, margin.top));
 
         const connections: ConnectionData[] = [];
+
         model_structure.forEach((layer, layerIndex) => {
             if (layerIndex < model_structure.length - 1) {
                 const nextLayer = model_structure[layerIndex + 1];
+                const neuronY = (height / Math.max(layer.neurons + 1, 2)) * neuronSpacingFactor;
                 const currentY = (height / Math.max(layer.neurons + 1, 2)) * neuronSpacingFactor;
                 const nextY = (height / Math.max(nextLayer.neurons + 1, 2)) * neuronSpacingFactor;
                 const weightMatrix = weight_matrices[layerIndex] || [];
@@ -263,7 +264,10 @@ const ModelNetworkVisualizer: FC<{ visualizationData: VisualizationData }> = ({ 
                 const neuronData: NeuronData = {
                     x: layerIndex * layerSpacing,
                     y: (i + 0.5) * (neuronY / neuronSpacingFactor),
-                    data: (activations[layerIndex]?.[i] ?? []) as number[]
+                    values: (activations[layerIndex]?.values?.[i] ?? []) as number[],
+                    targets: (activations[layerIndex]?.targets ?? []) as number[],
+                    layerIndex: layerIndex,
+                    neuronIndex: i
                 };
 
                 const neuronGroup = zoomGroup.append('g')
@@ -273,55 +277,93 @@ const ModelNetworkVisualizer: FC<{ visualizationData: VisualizationData }> = ({ 
                     .style('cursor', 'pointer')
                     .on('click', (event: MouseEvent, d: NeuronData) => {
                         event.stopPropagation();
-                        setSelectedNeuron(d.data);
+                        setSelectedNeuron({
+                            values: d.values,
+                            targets: d.targets,
+                            layerIndex: d.layerIndex,
+                            neuronIndex: d.neuronIndex
+                        });
                     });
 
                 neuronGroup.append('circle')
                     .attr('class', 'network-node')
                     .attr('r', neuronRadius);
 
-                if (activations[layerIndex]?.[i]) {
-                    const histData = neuronData.data;
-                    const extent = d3.extent(histData) as [number, number];
-                    const histogram = d3.bin()
+                const histData = neuronData.values;
+                const extent = d3.extent(histData) as [number, number];
+                const histogram = d3.bin()
+                    .domain(extent)
+                    .thresholds(8)(histData) as ExtendedHistogramBin[];
+
+                const maxBinLength = d3.max(histogram, (d: ExtendedHistogramBin) => d.length) ?? 0;
+
+                const xScale = d3.scaleLinear()
+                    .domain([histogram[0]?.x0 ?? 0, histogram[histogram.length - 1]?.x1 ?? 1])
+                    .range([-neuronRadius + 6, neuronRadius - 6]);
+
+                const yScale = d3.scaleLinear()
+                    .domain([0, maxBinLength])
+                    .range([neuronRadius - 6, -neuronRadius + 6]);
+
+                const histogramGroup = neuronGroup.append('g')
+                    .attr('class', 'histogram-group');
+
+                if (neuronData.targets && neuronData.targets.length > 0) {
+                    const class0Data = histData.filter((_, i) => neuronData.targets[i] === 0);
+                    const class1Data = histData.filter((_, i) => neuronData.targets[i] === 1);
+
+                    const hist0 = d3.bin()
                         .domain(extent)
-                        .thresholds(8)(histData) as ExtendedHistogramBin[];
+                        .thresholds(8)(class0Data);
+                    const hist1 = d3.bin()
+                        .domain(extent)
+                        .thresholds(8)(class1Data);
 
-                    const maxBinLength = d3.max(histogram, (d: ExtendedHistogramBin) => d.length) ?? 0;
-
-                    const xScale = d3.scaleLinear()
-                        .domain([histogram[0]?.x0 ?? 0, histogram[histogram.length - 1]?.x1 ?? 1])
-                        .range([-neuronRadius + 6, neuronRadius - 6]);
-
-                    const yScale = d3.scaleLinear()
-                        .domain([0, maxBinLength])
-                        .range([neuronRadius - 6, -neuronRadius + 6]);
-
-                    const histogramGroup = neuronGroup.append('g')
-                        .attr('class', 'histogram-group');
-
-                    histogramGroup.selectAll('rect')
-                        .data(histogram)
+                    histogramGroup.selectAll('.class0-bar')
+                        .data(hist0)
                         .enter()
                         .append('rect')
-                        .attr('class', 'histogram-bar')
+                        .attr('class', 'histogram-bar class0-bar')
                         .attr('x', (d: ExtendedHistogramBin) => xScale(d.x0 ?? 0))
-                        .attr('width', (d: ExtendedHistogramBin) => Math.max(2, xScale(d.x1 ?? 0) - xScale(d.x0 ?? 0) - 1))
+                        .attr('width', (d: ExtendedHistogramBin) =>
+                            Math.max(2, xScale(d.x1 ?? 0) - xScale(d.x0 ?? 0) - 1))
                         .attr('y', (d: ExtendedHistogramBin) => yScale(d.length))
-                        .attr('height', (d: ExtendedHistogramBin) => Math.max(0, yScale(0) - yScale(d.length)));
+                        .attr('height', (d: ExtendedHistogramBin) =>
+                            Math.max(0, yScale(0) - yScale(d.length)))
+                        .style('fill', 'red')
+                        .style('opacity', 0.6);
+
+                    histogramGroup.selectAll('.class1-bar')
+                        .data(hist1)
+                        .enter()
+                        .append('rect')
+                        .attr('class', 'histogram-bar class1-bar')
+                        .attr('x', (d: ExtendedHistogramBin) => xScale(d.x0 ?? 0))
+                        .attr('width', (d: ExtendedHistogramBin) =>
+                            Math.max(2, xScale(d.x1 ?? 0) - xScale(d.x0 ?? 0) - 1))
+                        .attr('y', (d: ExtendedHistogramBin) => yScale(d.length))
+                        .attr('height', (d: ExtendedHistogramBin) =>
+                            Math.max(0, yScale(0) - yScale(d.length)))
+                        .style('fill', 'blue')
+                        .style('opacity', 0.6);
                 }
             }
         });
-
     }, [visualizationData]);
+
 
     return (
         <div className="model-network-visualization">
             <div ref={containerRef} className="network-container"/>
             {selectedNeuron && (
                 <HistogramModel
-                    data={selectedNeuron}
+                    data={{
+                        values: selectedNeuron.values,
+                        targets: selectedNeuron.targets
+                    }}
                     onClose={() => setSelectedNeuron(null)}
+                    layerIndex={selectedNeuron.layerIndex}
+                    neuronIndex={selectedNeuron.neuronIndex}
                 />
             )}
         </div>

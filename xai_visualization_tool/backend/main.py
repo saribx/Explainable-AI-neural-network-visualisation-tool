@@ -32,7 +32,7 @@ class NetworkAnalyzer:
 
     @staticmethod
     def analyze_model_structure(
-        state_dict: Dict,
+            state_dict: Dict,
     ) -> Tuple[List[Dict], List[np.ndarray]]:
         """
         Analyzes the structure of a neural network and extracts weight matrices.
@@ -88,7 +88,7 @@ class NetworkAnalyzer:
                 # Additional hidden layers
                 layers.append(
                     {
-                        "name": f"Hidden Layer {idx+1}",
+                        "name": f"Hidden Layer {idx + 1}",
                         "neurons": shape[0],
                         "layer_type": "hidden",
                     }
@@ -194,10 +194,6 @@ class NNVisualizationServer:
         self.register_routes()
 
     async def analyze_network(self):
-        """
-        Analyzes network structure and data.
-        Returns combined model structure, activation data, and weight matrices.
-        """
         if not self.model_path or not self.activations_path:
             raise HTTPException(
                 status_code=404, detail="Model or activation files not found"
@@ -208,6 +204,28 @@ class NNVisualizationServer:
             activations = torch.load(
                 self.activations_path, map_location=torch.device("cpu")
             )
+            print("\n=== Detailed Activation Structure ===")
+            print(f"Type: {type(activations)}")
+            if isinstance(activations, dict):
+                print("Keys:", activations.keys())
+                print("Activations shape:", [a.shape for a in activations["activations"]])
+                print("Targets shape:", activations["targets"].shape)
+            else:
+                print("First activation shape:", activations[0].shape)
+            print("=======================================\n")
+
+            # Create activation info string
+            activation_info = ""
+            if isinstance(activations, dict):
+                activation_info = f"Dictionary format: {str(activations)[:2000]}"
+            elif isinstance(activations, list):
+                activation_info = f"List format: {str(activations)[:2000]}"
+            elif isinstance(activations, torch.Tensor):
+                activation_info = f"Tensor format: {str(activations.tolist())[:2000]}"
+            else:
+                activation_info = (
+                    f"Other format ({type(activations)}): {str(activations)[:2000]}"
+                )
 
             state_dict = (
                 model.get("state_dict", model)
@@ -216,17 +234,34 @@ class NNVisualizationServer:
             )
 
             processed_activations = []
-            if isinstance(activations, torch.Tensor):
-                processed_activations = activations.tolist()
-            elif isinstance(activations, list):
+            if isinstance(activations, dict):
+                # If we have a dict with activations and targets
+                act_data = activations["activations"]
+                targets = activations["targets"]
                 processed_activations = [
-                    tensor.tolist() if isinstance(tensor, torch.Tensor) else tensor
+                    {
+                        "values": tensor.tolist() if isinstance(tensor, torch.Tensor) else tensor,
+                        "targets": targets.tolist() if isinstance(targets, torch.Tensor) else targets
+                    }
+                    for tensor in act_data
+                ]
+            elif isinstance(activations, list):
+                # Old format - just activations without targets
+                processed_activations = [
+                    {
+                        "values": tensor.tolist() if isinstance(tensor, torch.Tensor) else tensor,
+                        "targets": None
+                    }
                     for tensor in activations
                 ]
 
-            return self.network_analyzer.process_network_data(
+            # Include activation_info in the returned data
+            visualization_data = self.network_analyzer.process_network_data(
                 state_dict, processed_activations
             )
+            visualization_data["activation_info"] = activation_info
+
+            return visualization_data
 
         except Exception as e:
             raise HTTPException(status_code=500, detail=str(e))

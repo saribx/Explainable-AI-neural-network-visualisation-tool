@@ -82,3 +82,18 @@
     fill: #666;
     user-select: none;
 }
+
+/* In modelNNVisualizer.css */
+.histogram-group .class0-bar {
+    fill: red;
+    opacity: 0.6;
+}
+
+.histogram-group .class1-bar {
+    fill: blue;
+    opacity: 0.6;
+}
+
+.histogram-group rect {
+    shape-rendering: crispEdges;
+}
