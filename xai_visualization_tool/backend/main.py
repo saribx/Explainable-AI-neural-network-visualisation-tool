@@ -13,6 +13,7 @@ Features:
 """
 
 import os
+import traceback
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple
 
@@ -303,6 +304,34 @@ class NNVisualizationServer:
         async def root():
             """Root endpoint that analyzes network structure and returns visualization data."""
             return await self.analyze_network()
+
+        @self.app.post("/upload_dataset/")
+        async def upload_dataset(file: UploadFile = File(...)):
+            """Handles dataset file upload and returns the first element."""
+            try:
+                file_path = await self.file_handler.save_upload(file, "dataset")
+                dataset = torch.load(file_path)
+
+                first_element = None
+
+                # Extract first element from x_train
+                if isinstance(dataset, dict) and 'x_train' in dataset:
+                    x_train = dataset['x_train']
+                    if isinstance(x_train, torch.Tensor):
+                        # Get first image and convert to list
+                        first_element = x_train[0].detach().cpu().numpy().tolist()
+                        print("First element shape:", x_train[0].shape)
+                        print("First element values:", first_element[:10])  # Print first 10 values
+
+                return {
+                    "filename": file.filename,
+                    "first_element": first_element
+                }
+            except Exception as e:
+                print("Error processing dataset:", str(e))
+                import traceback
+                print("Full error:", traceback.format_exc())
+                raise HTTPException(status_code=500, detail=str(e))
 
 
 # Initialize server

@@ -3,11 +3,35 @@ import {useState} from 'react';
 import './App.css';
 import api from './api';
 import NNdrawer from "./NNdrawer.tsx";
+import DatasetPreview from './DatasetPreview';
 import ModelNetworkVisualizer from './modelNNVisualizer.tsx';
 
-/**
- * Provides file upload functionality and visualization rendering
- */
+// Viridis color mapping function
+const getViridisColor = (value) => {
+    const colors = [
+        [68, 1, 84],       // Dark purple
+        [70, 50, 127],     // Purple
+        [59, 82, 139],     // Blue
+        [33, 144, 141],    // Teal
+        [93, 201, 99],     // Green
+        [253, 231, 37]     // Yellow
+    ];
+
+    const v = Math.max(0, Math.min(1, value));
+    const numSegments = colors.length - 1;
+    const segment = Math.min(Math.floor(v * numSegments), numSegments - 1);
+    const segmentT = (v * numSegments) - segment;
+
+    const c1 = colors[segment];
+    const c2 = colors[segment + 1];
+
+    const r = Math.round(c1[0] + (c2[0] - c1[0]) * segmentT);
+    const g = Math.round(c1[1] + (c2[1] - c1[1]) * segmentT);
+    const b = Math.round(c1[2] + (c2[2] - c1[2]) * segmentT);
+
+    return `rgb(${r}, ${g}, ${b})`;
+};
+
 function App() {
     const [isModelFileUploaded, setIsModelFileUploaded] = useState(false);
     const [isActFileUploaded, setIsActFileUploaded] = useState(false);
@@ -16,11 +40,8 @@ function App() {
     const [visualizationData, setVisualizationData] = useState(null);
     const [error, setError] = useState(null);
     const [uploadSuccess, setUploadSuccess] = useState({model: false, act: false});
+    const [datasetPreview, setDatasetPreview] = useState(null);
 
-    /**
-     * Handles the model file input event and uploads the file
-     * @param {Event} e - The file input event
-     */
     async function handleModelFileInput(e) {
         const files = e.target.files;
         if (files) {
@@ -41,10 +62,6 @@ function App() {
         }
     }
 
-    /**
-     * Handles the activation file input event and uploads the file
-     * @param {Event} e - The file input event
-     */
     async function handleActFileInput(e) {
         const Afiles = e.target.files;
         if (Afiles) {
@@ -65,9 +82,6 @@ function App() {
         }
     }
 
-    /**
-     * Handles the model upload button click event, triggering the file input dialog
-     */
     function handleModelUploadButtonClick() {
         const input = document.createElement('input');
         input.type = 'file';
@@ -76,9 +90,6 @@ function App() {
         input.click();
     }
 
-    /**
-     * Handles the activation upload button click event, triggering the file input dialog
-     */
     function handleActUploadButtonClick() {
         const input = document.createElement('input');
         input.type = 'file';
@@ -87,9 +98,6 @@ function App() {
         input.click();
     }
 
-    /**
-     * Loads example files when the "Load Example Files" button is clicked
-     */
     async function handleLoadExample() {
         try {
             const response = await api.get('/use_example/');
@@ -107,9 +115,6 @@ function App() {
         }
     }
 
-    /**
-     * Handles the "Visualize" button click event, fetching the visualization data
-     */
     async function handleVisualizeButtonClick() {
         try {
             const response = await api.get('/');
@@ -167,6 +172,8 @@ function App() {
                             )}
                         </button>
 
+                        <DatasetPreview onDatasetLoaded={setDatasetPreview}/>
+
                         <button onClick={handleModelUploadButtonClick} className="upload-button">
                             <svg className="upload-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor"
                                  strokeWidth="2">
@@ -220,7 +227,11 @@ function App() {
                                     <h4>Activation Data Structure:</h4>
                                     <pre>{visualizationData.activation_info}</pre>
                                 </div>
-                                <ModelNetworkVisualizer visualizationData={visualizationData}/>
+                                <ModelNetworkVisualizer
+                                    visualizationData={visualizationData}
+                                    firstLayerData={datasetPreview}
+                                    getViridisColor={getViridisColor}
+                                />
                             </>
                         )}
                     </>
