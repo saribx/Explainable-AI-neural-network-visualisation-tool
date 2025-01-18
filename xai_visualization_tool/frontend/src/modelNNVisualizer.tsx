@@ -197,7 +197,8 @@ const ModelNetworkVisualizer: FC<ModelNetworkVisualizerProps> = ({visualizationD
 
         const totalWidth = 400;
         const startX = (legendWidth - totalWidth) / 2;
-
+        
+        //Options for strong positive, strong negative or all the connections of the neural network 
         const createOption = (x: number, label: string, checked: boolean, filterType: 'showAll' | 'showPositive' | 'showNegative') => {
             const option = filterControls.append('g')
                 .attr('transform', `translate(${x}, -5)`)

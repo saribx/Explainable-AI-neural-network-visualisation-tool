@@ -11,6 +11,7 @@ interface HistogramModalProps {
     neuronIndex?: number;
 }
 
+//Function to create a histogram of node's activation
 const HistogramModal: FC<HistogramModalProps> = ({data, onClose, layerIndex, neuronIndex}) => {
     const modalRef = useRef(null);
 
@@ -112,7 +113,7 @@ const HistogramModal: FC<HistogramModalProps> = ({data, onClose, layerIndex, neu
                 .attr('transform', position === 'bottom' ? `translate(0,${height})` : '')
                 .call(axis);
             
-            //positioning of the label of the axis is defined
+            //positioning of the label of the axis 
             g.append('text')
                 .attr('fill', '#666')
                 .attr('text-anchor', 'middle')
