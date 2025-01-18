@@ -22,6 +22,7 @@ npm run dev
 You can then see the website by opening the URL created in your console. 
 For questions reach out to the team members:
 - Sarib Samdani
+- Advait Vinod
 - Hjalmar Schulz 
 
 Supervised by Prof. Dr. Stefan Haufe 

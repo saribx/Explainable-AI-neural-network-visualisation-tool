@@ -111,7 +111,8 @@ const HistogramModal: FC<HistogramModalProps> = ({data, onClose, layerIndex, neu
             const g = svg.append('g')
                 .attr('transform', position === 'bottom' ? `translate(0,${height})` : '')
                 .call(axis);
-
+            
+            //positioning of the label of the axis is defined
             g.append('text')
                 .attr('fill', '#666')
                 .attr('text-anchor', 'middle')
