@@ -117,17 +117,18 @@ const HistogramModal: FC<HistogramModalProps> = ({data, onClose, layerIndex, neu
             g.append('text')
                 .attr('fill', '#666')
                 .attr('text-anchor', 'middle')
-                .text(label);
 
             if (position === 'bottom') {
                 g.select('text')
                     .attr('x', width / 2)
-                    .attr('y', 35);
+                    .attr('y', 25)
+                    .text(label);
             } else {
                 g.select('text')
                     .attr('transform', 'rotate(-90)')
                     .attr('y', -40)
-                    .attr('x', -height / 2);
+                    .attr('x', (2 * height / 3) )
+                    .text(label);
             }
         };
 
