@@ -381,17 +381,33 @@ const ModelNetworkVisualizer: FC<ModelNetworkVisualizerProps> = ({visualizationD
                 const histogramGroup = neuronGroup.append('g')
                     .attr('class', 'histogram-group');
 
-                if (neuronData.targets && neuronData.targets.length > 0) {
+                if (!neuronData.targets || neuronData.targets.length === 0) {
+                    // No targets provided, single histogram for all data
+                    histogramGroup.selectAll('rect')
+                        .data(histogram)
+                        .enter()
+                        .append('rect')
+                        .attr('class', 'histogram-bar')
+                        .attr('x', (d: ExtendedHistogramBin) => xScale(d.x0 ?? 0))
+                        .attr('width', (d: ExtendedHistogramBin) =>
+                            Math.max(2, xScale(d.x1 ?? 0) - xScale(d.x0 ?? 0) - 1))
+                        .attr('y', (d: ExtendedHistogramBin) => yScale(d.length))
+                        .attr('height', (d: ExtendedHistogramBin) =>
+                            Math.max(0, yScale(0) - yScale(d.length)))
+                        .style('fill', 'blue')
+                        .style('opacity', 0.6);
+                } else {
+                    // Targets provided, create separate histograms for each class
                     const class0Data = histData.filter((_, i) => neuronData.targets[i] === 0);
                     const class1Data = histData.filter((_, i) => neuronData.targets[i] === 1);
-
+                
                     const hist0 = d3.bin()
                         .domain(extent)
                         .thresholds(8)(class0Data);
                     const hist1 = d3.bin()
                         .domain(extent)
                         .thresholds(8)(class1Data);
-
+                
                     histogramGroup.selectAll('.class0-bar')
                         .data(hist0)
                         .enter()
@@ -405,7 +421,7 @@ const ModelNetworkVisualizer: FC<ModelNetworkVisualizerProps> = ({visualizationD
                             Math.max(0, yScale(0) - yScale(d.length)))
                         .style('fill', 'red')
                         .style('opacity', 0.6);
-
+                
                     histogramGroup.selectAll('.class1-bar')
                         .data(hist1)
                         .enter()
@@ -420,6 +436,7 @@ const ModelNetworkVisualizer: FC<ModelNetworkVisualizerProps> = ({visualizationD
                         .style('fill', 'blue')
                         .style('opacity', 0.6);
                 }
+                    
             }
         });
     }, [visualizationData, firstLayerData]);
