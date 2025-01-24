@@ -394,7 +394,7 @@ const ModelNetworkVisualizer: FC<ModelNetworkVisualizerProps> = ({visualizationD
                         .attr('y', (d: ExtendedHistogramBin) => yScale(d.length))
                         .attr('height', (d: ExtendedHistogramBin) =>
                             Math.max(0, yScale(0) - yScale(d.length)))
-                        .style('fill', 'blue')
+                        .style('fill', '#4f9deb')
                         .style('opacity', 0.6);
                 } else {
                     // Targets provided, create separate histograms for each class
