@@ -1,5 +1,6 @@
-import {useEffect, useRef, type FC} from 'react';
+import React, {useEffect, useRef, type FC} from 'react';
 import * as d3 from 'd3';
+import './App.css';
 
 interface HistogramModalProps {
     data: {
@@ -11,9 +12,20 @@ interface HistogramModalProps {
     neuronIndex?: number;
 }
 
-//Function to create a histogram of node's activation
+interface HistogramBin extends d3.Bin<number, number> {
+    x0: number | undefined;
+    x1: number | undefined;
+    length: number;
+}
+
+interface HistogramData {
+    data: HistogramBin[];
+    className: string;
+    fill: string;
+}
+
 const HistogramModal: FC<HistogramModalProps> = ({data, onClose, layerIndex, neuronIndex}) => {
-    const modalRef = useRef(null);
+    const modalRef = useRef<HTMLDivElement>(null);
 
     useEffect(() => {
         if (!modalRef.current || !data.values?.length) return;
@@ -30,7 +42,13 @@ const HistogramModal: FC<HistogramModalProps> = ({data, onClose, layerIndex, neu
             .attr('transform', `translate(${margin.left},${margin.top})`);
 
         const binCount = Math.ceil(Math.sqrt(data.values.length));
-        const histogram = d3.bin().thresholds(binCount)(data.values);
+
+        // Create histogram generator
+        const binGenerator = d3.bin<number, number>()
+            .domain([d3.min(data.values) || 0, d3.max(data.values) || 1])
+            .thresholds(binCount);
+
+        const histogram = binGenerator(data.values);
 
         const xScale = d3.scaleLinear()
             .domain([d3.min(data.values) || 0, d3.max(data.values) || 1])
@@ -43,33 +61,33 @@ const HistogramModal: FC<HistogramModalProps> = ({data, onClose, layerIndex, neu
             .nice();
 
         if (data.targets?.length) {
-            const [class0Data, class1Data] = [
-                data.values.filter((_, i) => data.targets[i] === 0),
-                data.values.filter((_, i) => data.targets[i] === 1)
-            ];
+            const class0Data = data.values.filter((_, i) => data.targets?.[i] === 0);
+            const class1Data = data.values.filter((_, i) => data.targets?.[i] === 1);
 
-            const [hist0, hist1] = [class0Data, class1Data].map(d =>
-                d3.bin().domain(xScale.domain()).thresholds(binCount)(d)
-            );
+            const hist0 = binGenerator(class0Data);
+            const hist1 = binGenerator(class1Data);
 
             svg.append('g')
                 .attr('class', 'grid')
                 .attr('opacity', 0.1)
-                .call(d3.axisLeft(yScale).tickSize(-width).tickFormat(''));
+                .call(d3.axisLeft(yScale).tickSize(-width).tickFormat(() => ''));
 
-            [
-                {data: hist0, className: 'class0-bar', fill: 'red'},
-                {data: hist1, className: 'class1-bar', fill: 'blue'}
-            ].forEach(({data: histData, className, fill}) => {
+            const histogramData: HistogramData[] = [
+                {data: hist0 as HistogramBin[], className: 'class0-bar', fill: 'red'},
+                {data: hist1 as HistogramBin[], className: 'class1-bar', fill: 'blue'}
+            ];
+
+            histogramData.forEach(({data: histData, className, fill}) => {
                 svg.selectAll(`.${className}`)
                     .data(histData)
                     .enter()
                     .append('rect')
                     .attr('class', `histogram-bar ${className}`)
-                    .attr('x', d => xScale(d.x0 || 0))
-                    .attr('width', d => Math.max(0, xScale(d.x1 || 0) - xScale(d.x0 || 0) - 1))
-                    .attr('y', d => yScale(d.length))
-                    .attr('height', d => height - yScale(d.length))
+                    .attr('x', (d: HistogramBin) => xScale(d.x0 || 0))
+                    .attr('width', (d: HistogramBin) =>
+                        Math.max(0, xScale(d.x1 || 0) - xScale(d.x0 || 0) - 1))
+                    .attr('y', (d: HistogramBin) => yScale(d.length))
+                    .attr('height', (d: HistogramBin) => height - yScale(d.length))
                     .style('fill', fill)
                     .style('opacity', 0.6);
             });
@@ -99,24 +117,24 @@ const HistogramModal: FC<HistogramModalProps> = ({data, onClose, layerIndex, neu
                 .enter()
                 .append('rect')
                 .attr('class', 'histogram-bar')
-                .attr('x', d => xScale(d.x0 || 0))
-                .attr('width', d => Math.max(0, xScale(d.x1 || 0) - xScale(d.x0 || 0) - 1))
-                .attr('y', d => yScale(d.length))
-                .attr('height', d => height - yScale(d.length))
+                .attr('x', (d: HistogramBin) => xScale(d.x0 || 0))
+                .attr('width', (d: HistogramBin) =>
+                    Math.max(0, xScale(d.x1 || 0) - xScale(d.x0 || 0) - 1))
+                .attr('y', (d: HistogramBin) => yScale(d.length))
+                .attr('height', (d: HistogramBin) => height - yScale(d.length))
                 .style('fill', '#4f9deb')
                 .style('opacity', 0.8);
         }
 
-        const addAxis = (scale: any, position: string, label: string) => {
+        const addAxis = (scale: d3.AxisScale<d3.NumberValue>, position: string, label: string) => {
             const axis = position === 'bottom' ? d3.axisBottom(scale) : d3.axisLeft(scale);
             const g = svg.append('g')
                 .attr('transform', position === 'bottom' ? `translate(0,${height})` : '')
                 .call(axis);
-            
-            //positioning of the label of the axis 
+
             g.append('text')
                 .attr('fill', '#666')
-                .attr('text-anchor', 'middle')
+                .attr('text-anchor', 'middle');
 
             if (position === 'bottom') {
                 g.select('text')
@@ -127,7 +145,7 @@ const HistogramModal: FC<HistogramModalProps> = ({data, onClose, layerIndex, neu
                 g.select('text')
                     .attr('transform', 'rotate(-90)')
                     .attr('y', -40)
-                    .attr('x', (2 * height / 3) )
+                    .attr('x', (2 * height / 3))
                     .text(label);
             }
         };

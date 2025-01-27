@@ -163,6 +163,12 @@ function App() {
                         {error && <div className="error-message">{error}</div>}
 
                         <button onClick={handleLoadExample} className="upload-button">
+                            <svg className="example-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                 strokeWidth="2">
+                                <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
+                                <path d="M3 16l5-5 4 4 5.5-5.5"/>
+                                <circle cx="17.5" cy="8.5" r="1.5"/>
+                            </svg>
                             Load Example Files
                             {uploadSuccess.model && uploadSuccess.act && (
                                 <svg className="success-check" viewBox="0 0 24 24" fill="none" stroke="currentColor"
@@ -190,7 +196,7 @@ function App() {
                             )}
                         </button>
                         {isModelFileUploaded && file && (
-                            <p className="upload-text">Model File Uploaded: {file.name}</p>
+                            <p className="upload-text">File Uploaded: {file.name}</p>
                         )}
 
                         <button onClick={handleActUploadButtonClick} className="upload-button">
@@ -209,7 +215,7 @@ function App() {
                             )}
                         </button>
                         {isActFileUploaded && Afile && (
-                            <p className="upload-text">Activation File Uploaded: {Afile.name}</p>
+                            <p className="upload-text">File Uploaded: {Afile.name}</p>
                         )}
 
                         <button

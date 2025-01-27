@@ -1,24 +1,50 @@
-// DatasetPreview.tsx
 import * as React from 'react';
 import api from './api';
-import './DatasetPreview.css';
+import './App.css';
 
 interface DatasetPreviewProps {
     className?: string;
     onDatasetLoaded?: (data: number[]) => void;
 }
 
+interface DatasetInfo {
+    splits: {
+        [key: string]: { shape: number[], available: boolean }
+    };
+    currentElement: number[];
+    dimensions: number[];
+}
+
+// RGB color type definitions for color interpolation
+type RGBColor = [number, number, number];
+type ColorMatrix = RGBColor[];
+
+// Calculates interpolated RGB color values based on input and color matrix
+const calculateColorTransition = (v: number, colors: ColorMatrix): RGBColor => {
+    const numSegments = colors.length - 1;
+    const segment = Math.min(Math.floor(v * numSegments), numSegments - 1);
+    const segmentT = (v * numSegments) - segment;
+    const c1 = colors[segment];
+    const c2 = colors[segment + 1];
+
+    return [
+        Math.round(c1[0] + (c2[0] - c1[0]) * segmentT),
+        Math.round(c1[1] + (c2[1] - c1[1]) * segmentT),
+        Math.round(c1[2] + (c2[2] - c1[2]) * segmentT)
+    ];
+};
+
 const DatasetPreview: React.FC<DatasetPreviewProps> = ({className, onDatasetLoaded}) => {
-    const [isDatasetUploaded, setIsDatasetUploaded] = React.useState(false);
-    const [datasetFile, setDatasetFile] = React.useState<File | null>(null);
     const [uploadSuccess, setUploadSuccess] = React.useState(false);
     const [error, setError] = React.useState<string | null>(null);
-    const [firstElement, setFirstElement] = React.useState<number[] | null>(null);
+    const [datasetInfo, setDatasetInfo] = React.useState<DatasetInfo | null>(null);
+    const [selectedSplit, setSelectedSplit] = React.useState<'train' | 'test' | 'val'>('train');
+    const [selectedIndex, setSelectedIndex] = React.useState<number>(0);
 
-    const getColor = (value: number): string => {
+    // Maps numeric values to RGB colors using viridis-like color scheme
+    const getColor = React.useCallback((value: number): string => {
         const v = Math.max(0, Math.min(1, value));
-
-        const colors = [
+        const colors: ColorMatrix = [
             [68, 1, 84],
             [70, 50, 127],
             [59, 82, 139],
@@ -27,92 +53,132 @@ const DatasetPreview: React.FC<DatasetPreviewProps> = ({className, onDatasetLoad
             [253, 231, 37]
         ];
 
-        const numSegments = colors.length - 1;
-        const segment = Math.min(Math.floor(v * numSegments), numSegments - 1);
-        const segmentT = (v * numSegments) - segment;
-
-        const c1 = colors[segment];
-        const c2 = colors[segment + 1];
-
-        const r = Math.round(c1[0] + (c2[0] - c1[0]) * segmentT);
-        const g = Math.round(c1[1] + (c2[1] - c1[1]) * segmentT);
-        const b = Math.round(c1[2] + (c2[2] - c1[2]) * segmentT);
-
+        const [r, g, b] = calculateColorTransition(v, colors);
         return `rgb(${r}, ${g}, ${b})`;
-    };
+    }, []);
 
-    const reshapeToGrid = (data: number[]): number[][] => {
-        if (!Array.isArray(data) || data.length !== 64) {
+    // Converts array into grid format based on dimensions
+    const reshapeToGrid = React.useCallback((data: number[], dims: number[]): number[][] => {
+        if (!Array.isArray(data)) {
             console.error('Invalid data format:', data);
-            return Array(8).fill(Array(8).fill(0));
+            return [[0]];
         }
+
+        const [height, width] = dims;
         const grid: number[][] = [];
-        for (let i = 0; i < 8; i++) {
-            grid.push(data.slice(i * 8, (i + 1) * 8));
+        for (let i = 0; i < height; i++) {
+            grid.push(data.slice(i * width, (i + 1) * width));
         }
         return grid;
-    };
+    }, []);
 
+    // Fetches a specific element from the dataset
+    const fetchDatasetElement = React.useCallback(async (split: string, index: number) => {
+        try {
+            const response = await api.get(`/get_dataset_element/`, {
+                params: {split, index}
+            });
+
+            if (response.data.element) {
+                setDatasetInfo(prev => prev ? {
+                    ...prev,
+                    currentElement: response.data.element
+                } : null);
+                onDatasetLoaded?.(response.data.element);
+            }
+        } catch (err: any) {
+            setError(`Error fetching dataset element: ${err.message}`);
+        }
+    }, [onDatasetLoaded]);
+
+    // Handles file input events and performs API upload
     const handleDatasetFileInput = React.useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
         const files = e.target.files;
         if (files && files[0]) {
-            setDatasetFile(files[0]);
-            setIsDatasetUploaded(true);
             const formData = new FormData();
             formData.append('file', files[0]);
 
-            void api.post('/upload_dataset/', formData, {
+            api.post('/upload_dataset/', formData, {
                 headers: {'Content-Type': 'multipart/form-data'}
-            }).then((response) => {
-                console.log('Dataset upload response:', response.data);
+            }).then((response: { data: DatasetInfo }) => { // Added response type
                 setError(null);
                 setUploadSuccess(true);
-                if (response.data.first_element && Array.isArray(response.data.first_element)) {
-                    setFirstElement(response.data.first_element);
-                    onDatasetLoaded?.(response.data.first_element);
-                } else {
-                    console.error('Invalid response format:', response.data);
-                    setError('Invalid data format received');
+                setDatasetInfo(response.data);
+                if (response.data.currentElement) {
+                    onDatasetLoaded?.(response.data.currentElement);
                 }
             }).catch((err: Error) => {
                 console.error('Dataset upload error:', err);
                 setError(`Error uploading dataset file: ${err.message}`);
             });
+
         }
     }, [onDatasetLoaded]);
 
+    // Creates and triggers file input for dataset upload
     const handleDatasetUploadButtonClick = React.useCallback(() => {
         const input = document.createElement('input');
         input.type = 'file';
         input.accept = '.pt, .pth';
-        input.addEventListener('change', (e) => {
+        input.onchange = (e) => {
             const target = e.target as HTMLInputElement;
             if (target && target.files) {
                 handleDatasetFileInput({
-                    target: target,
+                    target,
                     currentTarget: target,
-                    preventDefault: () => {
-                    },
-                    stopPropagation: () => {
-                    },
-                    isPropagationStopped: () => false,
-                    isDefaultPrevented: () => false,
-                    persist: () => {
-                    },
-                    bubbles: e.bubbles,
-                    cancelable: e.cancelable,
-                    defaultPrevented: e.defaultPrevented,
-                    timeStamp: e.timeStamp,
-                    nativeEvent: e,
-                    type: e.type
                 } as React.ChangeEvent<HTMLInputElement>);
             }
-        });
+        };
         input.click();
     }, [handleDatasetFileInput]);
 
+    // Handle split change
+    const handleSplitChange = React.useCallback((split: 'train' | 'test' | 'val') => {
+        if (datasetInfo?.splits[split]?.available) {
+            setSelectedSplit(split);
+            setSelectedIndex(0);
+            fetchDatasetElement(split, 0).catch(err =>
+                setError(`Error changing split: ${err.message}`)
+            );
+        }
+    }, [datasetInfo, fetchDatasetElement]);
+
+    // Handle index change
+    const handleIndexChange = React.useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+        const inputValue = e.target.value;
+        const maxIndex = (datasetInfo?.splits[selectedSplit]?.shape[0] || 1) - 1;
+
+        // Handle empty input or backspace on single digit
+        if (inputValue === '') {
+            setSelectedIndex(0);
+            fetchDatasetElement(selectedSplit, 0).catch(err =>
+                setError(`Error changing index: ${err.message}`)
+            );
+            return;
+        }
+
+        // Remove leading zeros
+        const normalizedValue = inputValue.replace(/^0+/, '');
+        const index = parseInt(normalizedValue || '0', 10);
+
+        if (index >= 0 && index <= maxIndex) {
+            setSelectedIndex(index);
+            fetchDatasetElement(selectedSplit, index).catch(err =>
+                setError(`Error changing index: ${err.message}`)
+            );
+        }
+    }, [datasetInfo, selectedSplit, fetchDatasetElement]);
+
+    // Add function to handle key press
+    const handleKeyPress = React.useCallback((e: React.KeyboardEvent<HTMLInputElement>) => {
+        // Prevent default behavior for arrow keys to avoid cursor movement
+        if (e.key === 'ArrowUp' || e.key === 'ArrowDown') {
+            e.preventDefault();
+        }
+    }, []);
+
     return (
-        <div className="dataset-preview-container">
+        <div className={`dataset-preview-container ${className || ''}`}>
             <button onClick={handleDatasetUploadButtonClick} className="upload-button">
                 <svg className="upload-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                     <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
@@ -128,15 +194,46 @@ const DatasetPreview: React.FC<DatasetPreviewProps> = ({className, onDatasetLoad
                 )}
             </button>
 
-            {isDatasetUploaded && datasetFile && (
-                <p className="upload-text">Dataset File Uploaded: {datasetFile.name}</p>
+            {datasetInfo && (
+                <div className="dataset-controls">
+                    <div className="split-buttons">
+                        {(['train', 'test', 'val'] as const).map(split => {
+                            const info = datasetInfo.splits[split];
+                            if (!info) return null;
+
+                            return (
+                                <button
+                                    key={split}
+                                    onClick={() => handleSplitChange(split)}
+                                    className={`split-button ${!info.available ? 'disabled' : ''} ${selectedSplit === split ? 'active' : ''}`}
+                                    disabled={!info.available}
+                                >
+                                    {split}
+                                    <div style={{fontSize: '0.75rem', opacity: 0.8}}>({info.shape[0]})</div>
+                                </button>
+                            );
+                        })}
+                    </div>
+                    <div className="index-control">
+                        <input
+                            type="number"
+                            min={0}
+                            max={(datasetInfo.splits[selectedSplit]?.shape[0] || 1) - 1}
+                            value={selectedIndex}
+                            onChange={handleIndexChange}
+                            onKeyDown={handleKeyPress}
+                            placeholder="Select element index..."
+                            className="index-input"
+                        />
+                    </div>
+                </div>
             )}
 
-            {firstElement && (
+            {datasetInfo?.currentElement && (
                 <div className="dataset-preview">
-                    <h4>First Element Preview:</h4>
+                    <h4>Element Preview: {selectedSplit} [{selectedIndex}]</h4>
                     <div className="preview-image">
-                        {reshapeToGrid(firstElement).map((row, i) => (
+                        {reshapeToGrid(datasetInfo.currentElement, datasetInfo.dimensions).map((row, i) => (
                             <div key={i} className="image-row">
                                 {row.map((value, j) => (
                                     <div

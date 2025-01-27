@@ -1,21 +1,45 @@
 /* This file is for the page "Create NN" */
-import { useState, useEffect } from 'react';
+import React, {useState, useEffect} from 'react';
 import * as d3 from 'd3';
 import './NNdrawer.css'
 
+/**
+ * Represents the configuration for a neural network
+ * Defines the structure of input, hidden, and output layers
+ */
 interface NetworkConfig {
     inputNodes: number;
     hiddenLayers: number[];
     outputNodes: number;
 }
 
-const NNdrawer = () => {
+/**
+ * NNdrawer Component
+ *
+ * Provides an interactive visualization and configuration interface
+ * for creating and customizing a neural network architecture.
+ *
+ * Features:
+ * - Dynamic addition of hidden layers (up to 5)
+ * - Configurable number of input, hidden, and output nodes
+ * - Real-time SVG visualization of network structure
+ * - Responsive design with d3.js rendering
+ *
+ * @component
+ * @returns {React.ReactElement} Rendered neural network configuration UI
+ */
+const NNdrawer: React.FC = () => {
+    // Initial network configuration with default values
     const [networkConfig, setNetworkConfig] = useState<NetworkConfig>({
         inputNodes: 4,
-        hiddenLayers: [7,5],
+        hiddenLayers: [7, 5],
         outputNodes: 2
     });
 
+    /**
+     * Adds a new hidden layer to the network configuration
+     * Limits the total number of hidden layers to 5
+     */
     const addHiddenLayer = () => {
         if (networkConfig.hiddenLayers.length < 5) {
             setNetworkConfig(prev => ({
@@ -25,6 +49,15 @@ const NNdrawer = () => {
         }
     };
 
+    /**
+     * Renders the neural network visualization using D3.js
+     * Triggered on initial render and whenever network configuration changes
+     *
+     * Creates an SVG representation of the neural network:
+     * - Dynamically calculates layer and node positioning
+     * - Draws connections between nodes
+     * - Handles responsive resizing
+     */
     useEffect(() => {
         const drawNetwork = () => {
             const container = d3.select<HTMLDivElement, unknown>("#nn-drawer-container");
@@ -118,7 +151,7 @@ const NNdrawer = () => {
                                 onChange={(e) => {
                                     const newLayers = [...networkConfig.hiddenLayers];
                                     newLayers[idx] = Math.max(1, Math.min(15, parseInt(e.target.value) || 1));
-                                    setNetworkConfig(prev => ({ ...prev, hiddenLayers: newLayers }));
+                                    setNetworkConfig(prev => ({...prev, hiddenLayers: newLayers}));
                                 }}
                                 min="1"
                                 max="15"
@@ -150,7 +183,7 @@ const NNdrawer = () => {
                 </div>
             </div>
 
-            <div id="nn-drawer-container" className="network-visualization" />
+            <div id="nn-drawer-container" className="network-visualization"/>
         </div>
     );
 };

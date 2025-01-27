@@ -13,7 +13,6 @@ Features:
 """
 
 import os
-import traceback
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple
 
@@ -133,20 +132,27 @@ class FileHandler:
     """Manages file operations for model and activation data."""
 
     def __init__(self):
-        self.upload_dir = Path("/tmp")
-        # Get the parent directory of the backend folder (project root)
+        # Change to a directory we're sure we can write to
+        self.upload_dir = Path("./uploads")
         self.root_dir = Path(__file__).parent.parent
         self.example_files = {
             "model": self.root_dir / "linear_correlated_model.pt",
             "activations": self.root_dir / "acts_linear_correlated_model.pt",
         }
+        # Create uploads directory if it doesn't exist
+        self.upload_dir.mkdir(parents=True, exist_ok=True)
 
     async def save_upload(self, file: UploadFile, file_type: str) -> Path:
-        """Saves an uploaded file to the temporary directory."""
-        file_path = self.upload_dir / file.filename
-        with open(file_path, "wb") as buffer:
-            buffer.write(await file.read())
-        return file_path
+        """Saves an uploaded file to the uploads directory."""
+        try:
+            file_path = self.upload_dir / file.filename
+            with file_path.open("wb") as buffer:
+                content = await file.read()
+                buffer.write(content)
+            return file_path
+        except Exception as e:
+            print(f"Error saving file: {str(e)}")
+            raise
 
     def copy_example_files(self) -> Dict[str, Path]:
         """Copies example files to the temporary directory."""
@@ -307,30 +313,98 @@ class NNVisualizationServer:
 
         @self.app.post("/upload_dataset/")
         async def upload_dataset(file: UploadFile = File(...)):
-            """Handles dataset file upload and returns the first element."""
+            """Handles dataset file upload and analyzes its structure."""
             try:
+                if not file:
+                    raise HTTPException(status_code=400, detail="No file provided")
+
+                print(f"Received file: {file.filename}")  # Debug log
                 file_path = await self.file_handler.save_upload(file, "dataset")
+                print(f"File saved to: {file_path}")  # Debug log
+
                 dataset = torch.load(file_path)
+                print(f"Dataset loaded successfully")  # Debug log
+                self.current_dataset = dataset
 
+                # Analyze dataset structure
+                splits = {}
                 first_element = None
+                dimensions = None
 
-                # Extract first element from x_train
-                if isinstance(dataset, dict) and 'x_train' in dataset:
-                    x_train = dataset['x_train']
-                    if isinstance(x_train, torch.Tensor):
-                        # Get first image and convert to list
-                        first_element = x_train[0].detach().cpu().numpy().tolist()
-                        print("First element shape:", x_train[0].shape)
-                        print("First element values:", first_element[:10])  # Print first 10 values
+                for split in ['train', 'test', 'val']:
+                    key = f'x_{split}'
+                    if key in dataset and isinstance(dataset[key], torch.Tensor):
+                        tensor_shape = dataset[key].shape
+                        splits[split] = {
+                            'shape': list(tensor_shape),
+                            'available': True
+                        }
+
+                        if split == 'train' and first_element is None:
+                            first_tensor = dataset[key][0]
+                            if len(first_tensor.shape) == 1:
+                                size = int(np.sqrt(first_tensor.shape[0]))
+                                if size * size == first_tensor.shape[0]:
+                                    dimensions = [size, size]
+                                    first_element = first_tensor.detach().cpu().numpy().tolist()
+                            else:
+                                dimensions = list(first_tensor.shape)
+                                first_element = first_tensor.detach().cpu().numpy().tolist()
+
+                print(f"Analysis complete. Dimensions: {dimensions}")  # Debug log
 
                 return {
-                    "filename": file.filename,
-                    "first_element": first_element
+                    'splits': splits,
+                    'currentElement': first_element,
+                    'dimensions': dimensions
                 }
+
             except Exception as e:
-                print("Error processing dataset:", str(e))
+                print(f"Error in upload_dataset: {str(e)}")
                 import traceback
-                print("Full error:", traceback.format_exc())
+                print(traceback.format_exc())
+                raise HTTPException(
+                    status_code=500,
+                    detail=f"Error processing dataset: {str(e)}"
+                )
+
+        @self.app.get("/get_dataset_element/")
+        async def get_dataset_element(split: str, index: int):
+            """Retrieves a specific element from the dataset."""
+            try:
+                if not hasattr(self, 'current_dataset'):
+                    raise HTTPException(status_code=404, detail="No dataset loaded")
+
+                dataset = self.current_dataset
+                key = f'x_{split}'
+
+                if key not in dataset:
+                    raise HTTPException(status_code=404, detail=f"Split {split} not found")
+
+                data = dataset[key]
+                if not 0 <= index < len(data):
+                    raise HTTPException(status_code=400, detail="Index out of range")
+
+                element = data[index]
+                # Handle reshaping if needed
+                if len(element.shape) == 1:
+                    size = int(np.sqrt(element.shape[0]))
+                    if size * size == element.shape[0]:
+                        dimensions = [size, size]
+                    else:
+                        dimensions = [1, element.shape[0]]
+                else:
+                    dimensions = list(element.shape)
+
+                return {
+                    'element': element.detach().cpu().numpy().tolist(),
+                    'dimensions': dimensions
+                }
+
+            except Exception as e:
+                print("Error retrieving element:", str(e))
+                import traceback
+                print(traceback.format_exc())
                 raise HTTPException(status_code=500, detail=str(e))
 
 
