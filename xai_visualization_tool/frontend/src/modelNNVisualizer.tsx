@@ -55,6 +55,10 @@ interface VisualizationData {
         targets: number[];
     }[];
     weight_matrices: number[][][];
+    weight_range: {
+        min: number;
+        max: number;
+    };
 }
 
 interface ModelNetworkVisualizerProps {
@@ -202,7 +206,7 @@ const ModelNetworkVisualizer: React.FC<ModelNetworkVisualizerProps> = ({
 
         // Create color scale for weights
         const weightColorScale = d3.scaleSequential(d3.interpolateRdBu)
-            .domain([1, -1]);
+            .domain([visualizationData.weight_range.max, visualizationData.weight_range.min]);
 
         // Draw network structure
         const connections = createConnections(model_structure, weight_matrices, layerSpacing, height, neuronSpacingFactor);
@@ -568,8 +572,9 @@ const drawControls = (
         .attr('height', legendHeight)
         .style('fill', 'url(#weight-gradient)');
 
+
     const legendScale = d3.scaleLinear()
-        .domain([-1, 1])
+        .domain([colorScale.domain()[1], colorScale.domain()[0]])
         .range([0, legendWidth]);
 
     const legendAxis = d3.axisBottom(legendScale)

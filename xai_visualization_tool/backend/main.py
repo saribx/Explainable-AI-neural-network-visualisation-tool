@@ -115,10 +115,23 @@ class NetworkAnalyzer:
         for matrix in weight_matrices:
             processed_weights.append(matrix.tolist())
 
+        # Find global min/max weight values für die Legende
+        weight_min = float('inf')
+        weight_max = float('-inf')
+        for matrix in weight_matrices:
+            matrix_min = matrix.min()
+            matrix_max = matrix.max()
+            weight_min = min(weight_min, matrix_min)
+            weight_max = max(weight_max, matrix_max)
+
         return {
             "model_structure": layers,
             "activations": activations,
             "weight_matrices": processed_weights,
+            "weight_range": {  # Min/max values for weight matrix legend (color scale)
+                "min": float(weight_min),
+                "max": float(weight_max)
+            }
         }
 
 
