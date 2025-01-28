@@ -41,6 +41,11 @@ function App() {
     const [error, setError] = useState(null);
     const [uploadSuccess, setUploadSuccess] = useState({model: false, act: false});
     const [datasetPreview, setDatasetPreview] = useState(null);
+    const [settings, setSettings] = useState({
+        layers: {
+            to_visualize: null
+        }
+    });
 
     async function handleModelFileInput(e) {
         const files = e.target.files;
@@ -121,7 +126,11 @@ function App() {
             setVisualizationData(response.data);
             setError(null);
         } catch (err) {
-            setError(`Error fetching visualization data: ${err.message}`);
+            if (err.response) {
+                setError(`Error fetching visualization data: ${err.response.data.detail}`);
+            } else {
+                setError(`Error fetching visualization data: ${err.message}`);
+            }
             console.error('Visualization error:', err);
         }
     }
@@ -237,6 +246,8 @@ function App() {
                                     visualizationData={visualizationData}
                                     firstLayerData={datasetPreview}
                                     getViridisColor={getViridisColor}
+                                    settings={settings}
+                                    setSettings={setSettings}
                                 />
                             </>
                         )}

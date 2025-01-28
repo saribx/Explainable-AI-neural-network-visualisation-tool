@@ -16,6 +16,7 @@ import os
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple
 
+import pprint
 import torch
 import numpy as np
 from fastapi import FastAPI, HTTPException, File, UploadFile
@@ -32,7 +33,8 @@ class NetworkAnalyzer:
 
     @staticmethod
     def analyze_model_structure(
-            state_dict: Dict,
+        state_dict: Dict,
+        layers_modules: List[List[str]],
     ) -> Tuple[List[Dict], List[np.ndarray]]:
         """
         Analyzes the structure of a neural network and extracts weight matrices.
@@ -55,6 +57,7 @@ class NetworkAnalyzer:
         )
 
         # Process each weight matrix
+        activation_start = 0
         for idx, key in enumerate(weight_keys):
             tensor = state_dict[key]
             shape = tensor.shape
@@ -65,16 +68,26 @@ class NetworkAnalyzer:
             if idx == 0:
                 # Input layer
                 layers.append(
-                    {"name": "Input Layer", "neurons": shape[1], "layer_type": "input"}
+                    {
+                        "name": "Input Layer",
+                        "neurons": shape[1],
+                        "layer_type": "input",
+                        "modules": layers_modules[idx],
+                        "activation_start": activation_start,
+                    }
                 )
+                activation_start += len(layers_modules[idx])
                 # First hidden layer
                 layers.append(
                     {
                         "name": f"Hidden Layer 1",
                         "neurons": shape[0],
                         "layer_type": "hidden",
+                        "modules": layers_modules[idx + 1],
+                        "activation_start": activation_start,
                     }
                 )
+                activation_start += len(layers_modules[idx + 1])
             elif idx == len(weight_keys) - 1:
                 # Output layer
                 layers.append(
@@ -82,8 +95,11 @@ class NetworkAnalyzer:
                         "name": "Output Layer",
                         "neurons": shape[0],
                         "layer_type": "output",
+                        "modules": layers_modules[idx + 1],
+                        "activation_start": activation_start,
                     }
                 )
+                activation_start += len(layers_modules[idx])
             else:
                 # Additional hidden layers
                 layers.append(
@@ -91,13 +107,16 @@ class NetworkAnalyzer:
                         "name": f"Hidden Layer {idx + 1}",
                         "neurons": shape[0],
                         "layer_type": "hidden",
+                        "modules": layers_modules[idx + 1],
+                        "activation_start": activation_start,
                     }
                 )
+                activation_start += len(layers_modules[idx])
 
         return layers, weight_matrices
 
     @staticmethod
-    def process_network_data(state_dict: Dict, activations: List) -> Dict:
+    def process_network_data(state_dict: Dict, data_to_visualize: Dict) -> Dict:
         """
         Processes both network structure and data for visualization.
 
@@ -108,7 +127,52 @@ class NetworkAnalyzer:
         Returns:
             Dictionary containing model structure, activations, and weight matrices
         """
-        layers, weight_matrices = NetworkAnalyzer.analyze_model_structure(state_dict)
+        # Create activation info string
+        activation_info = ""
+        if isinstance(data_to_visualize, dict):
+            info = {
+                "activations": [a.shape for a in data_to_visualize["activations"]],
+                "targets": data_to_visualize["targets"].shape,
+                "layers": data_to_visualize["layers"],
+                "node_node": [a.shape for a in data_to_visualize["node_node"]]
+                if "node_node" in data_to_visualize
+                else None,
+            }
+            activation_info = f"Dictionary format: {pprint.pformat(info, indent=4)}"
+        else:
+            activation_info = f"Other format ({type(data_to_visualize)}): {str(data_to_visualize)[:2000]}"
+
+        processed_activations = []
+        if isinstance(data_to_visualize, dict):
+            # If we have a dict with activations and targets
+            act_data = data_to_visualize["activations"]
+            targets = data_to_visualize["targets"]
+            processed_activations = [
+                {
+                    "values": tensor.tolist()
+                    if isinstance(tensor, torch.Tensor)
+                    else tensor,
+                    "targets": targets.tolist()
+                    if isinstance(targets, torch.Tensor)
+                    else targets,
+                }
+                for tensor in act_data
+            ]
+        elif isinstance(data_to_visualize, list):
+            # Old format - just activations without targets
+            processed_activations = [
+                {
+                    "values": tensor.tolist()
+                    if isinstance(tensor, torch.Tensor)
+                    else tensor,
+                    "targets": None,
+                }
+                for tensor in data_to_visualize
+            ]
+
+        layers, weight_matrices = NetworkAnalyzer.analyze_model_structure(
+            state_dict, data_to_visualize.get("layers", None)
+        )
 
         # Process weight matrices into visualization format
         processed_weights = []
@@ -116,8 +180,8 @@ class NetworkAnalyzer:
             processed_weights.append(matrix.tolist())
 
         # Find global min/max weight values für die Legende
-        weight_min = float('inf')
-        weight_max = float('-inf')
+        weight_min = float("inf")
+        weight_max = float("-inf")
         for matrix in weight_matrices:
             matrix_min = matrix.min()
             matrix_max = matrix.max()
@@ -126,13 +190,63 @@ class NetworkAnalyzer:
 
         return {
             "model_structure": layers,
-            "activations": activations,
+            "activations": processed_activations,
             "weight_matrices": processed_weights,
             "weight_range": {  # Min/max values for weight matrix legend (color scale)
                 "min": float(weight_min),
-                "max": float(weight_max)
-            }
+                "max": float(weight_max),
+            },
+            "activation_info": activation_info,
         }
+
+    @staticmethod
+    def assert_valid_input(state_dict: Dict, data_to_visualize: Dict):
+        # All necessary keys are present
+        required_keys = ["activations", "layers"]
+        for key in required_keys:
+            if key not in data_to_visualize:
+                raise ValueError(f"Missing required key in data: {key}")
+
+        flatten = lambda l: [item for sublist in l for item in sublist]
+
+        # Check if activations and layers have the same length
+        if len(data_to_visualize["activations"]) != len(
+            flatten(data_to_visualize["layers"])
+        ):
+            raise ValueError("Length of activations and layers does not match")
+
+        # Assert that activations have the same number of samples
+        samples = None
+        for act in data_to_visualize["activations"]:
+            if isinstance(act, torch.Tensor):
+                if samples is None:
+                    samples = act.shape[0]
+                elif samples != act.shape[0]:
+                    raise ValueError("Number of samples in activations does not match")
+
+        # Assert that targets have the same number of samples
+        if "targets" in data_to_visualize:
+            if samples != data_to_visualize["targets"].shape[0]:
+                raise ValueError("Number of samples in targets does not match")
+
+        # Assert that node_node has same length and shape as weights
+        if "node_node" in data_to_visualize:
+            weights = [v for k, v in state_dict.items() if "weight" in k]
+            print("Number of weights:", len(weights))
+            print(
+                "Number of node_node:",
+                [x.shape for x in data_to_visualize["node_node"]],
+            )
+            if len(weights) != len(data_to_visualize["node_node"]):
+                raise ValueError("Number of weight matrices does not match node_node")
+
+            for idx, (weight, node_node) in enumerate(
+                zip(weights, data_to_visualize["node_node"])
+            ):
+                if weight.shape != node_node.shape:
+                    raise ValueError(
+                        f"Shape of weight matrix {idx} does not match node_node"
+                    )
 
 
 class FileHandler:
@@ -144,7 +258,8 @@ class FileHandler:
         self.root_dir = Path(__file__).parent.parent
         self.example_files = {
             "model": self.root_dir / "linear_correlated_model.pt",
-            "activations": self.root_dir / "acts_linear_correlated_model.pt",
+            "activations": self.root_dir
+            / "acts_linear_correlated_model_with_targets_node_node_with_name_and_input.pt",
         }
 
     async def save_upload(self, file: UploadFile, file_type: str) -> Path:
@@ -207,32 +322,26 @@ class NNVisualizationServer:
             )
 
         try:
-            model = torch.load(self.model_path, map_location=torch.device("cpu"))
-            activations = torch.load(
-                self.activations_path, map_location=torch.device("cpu")
+            model = torch.load(
+                self.model_path, map_location=torch.device("cpu"), weights_only=True
+            )
+            data_to_visualize = torch.load(
+                self.activations_path,
+                map_location=torch.device("cpu"),
+                weights_only=True,
             )
             print("\n=== Detailed Activation Structure ===")
-            print(f"Type: {type(activations)}")
-            if isinstance(activations, dict):
-                print("Keys:", activations.keys())
-                print("Activations shape:", [a.shape for a in activations["activations"]])
-                print("Targets shape:", activations["targets"].shape)
-            else:
-                print("First activation shape:", activations[0].shape)
-            print("=======================================\n")
-
-            # Create activation info string
-            activation_info = ""
-            if isinstance(activations, dict):
-                activation_info = f"Dictionary format: {str(activations)[:2000]}"
-            elif isinstance(activations, list):
-                activation_info = f"List format: {str(activations)[:2000]}"
-            elif isinstance(activations, torch.Tensor):
-                activation_info = f"Tensor format: {str(activations.tolist())[:2000]}"
-            else:
-                activation_info = (
-                    f"Other format ({type(activations)}): {str(activations)[:2000]}"
+            print(f"Type: {type(data_to_visualize)}")
+            if isinstance(data_to_visualize, dict):
+                print("Keys:", data_to_visualize.keys())
+                print(
+                    "Activations shape:",
+                    [a.shape for a in data_to_visualize["activations"]],
                 )
+                print("Targets shape:", data_to_visualize["targets"].shape)
+            else:
+                print("First activation shape:", data_to_visualize[0].shape)
+            print("=======================================\n")
 
             state_dict = (
                 model.get("state_dict", model)
@@ -240,33 +349,12 @@ class NNVisualizationServer:
                 else model.state_dict()
             )
 
-            processed_activations = []
-            if isinstance(activations, dict):
-                # If we have a dict with activations and targets
-                act_data = activations["activations"]
-                targets = activations["targets"]
-                processed_activations = [
-                    {
-                        "values": tensor.tolist() if isinstance(tensor, torch.Tensor) else tensor,
-                        "targets": targets.tolist() if isinstance(targets, torch.Tensor) else targets
-                    }
-                    for tensor in act_data
-                ]
-            elif isinstance(activations, list):
-                # Old format - just activations without targets
-                processed_activations = [
-                    {
-                        "values": tensor.tolist() if isinstance(tensor, torch.Tensor) else tensor,
-                        "targets": None
-                    }
-                    for tensor in activations
-                ]
+            self.network_analyzer.assert_valid_input(state_dict, data_to_visualize)
 
             # Include activation_info in the returned data
             visualization_data = self.network_analyzer.process_network_data(
-                state_dict, processed_activations
+                state_dict, data_to_visualize
             )
-            visualization_data["activation_info"] = activation_info
 
             return visualization_data
 
@@ -324,17 +412,14 @@ class NNVisualizationServer:
                 first_element = None
                 dimensions = None
 
-                for split in ['train', 'test', 'val']:
-                    key = f'x_{split}'
+                for split in ["train", "test", "val"]:
+                    key = f"x_{split}"
                     if key in dataset and isinstance(dataset[key], torch.Tensor):
                         tensor_shape = dataset[key].shape
-                        splits[split] = {
-                            'shape': list(tensor_shape),
-                            'available': True
-                        }
+                        splits[split] = {"shape": list(tensor_shape), "available": True}
 
                         # Get first element and dimensions from train set if available
-                        if split == 'train' and first_element is None:
+                        if split == "train" and first_element is None:
                             # Get first element
                             first_tensor = dataset[key][0]
                             # If it's 1D, try to determine if it should be square
@@ -343,23 +428,28 @@ class NNVisualizationServer:
                                 # If it's a perfect square
                                 if size * size == first_tensor.shape[0]:
                                     dimensions = [size, size]
-                                    first_element = first_tensor.detach().cpu().numpy().tolist()
+                                    first_element = (
+                                        first_tensor.detach().cpu().numpy().tolist()
+                                    )
                             else:
                                 dimensions = list(first_tensor.shape)
-                                first_element = first_tensor.detach().cpu().numpy().tolist()
+                                first_element = (
+                                    first_tensor.detach().cpu().numpy().tolist()
+                                )
 
                 print(f"Dimensions: {dimensions}")  # Debug print
                 print(f"First element shape: {len(first_element)}")  # Debug print
 
                 return {
-                    'splits': splits,
-                    'currentElement': first_element,
-                    'dimensions': dimensions
+                    "splits": splits,
+                    "currentElement": first_element,
+                    "dimensions": dimensions,
                 }
 
             except Exception as e:
                 print("Error processing dataset:", str(e))
                 import traceback
+
                 print(traceback.format_exc())
                 raise HTTPException(status_code=500, detail=str(e))
 
@@ -367,14 +457,16 @@ class NNVisualizationServer:
         async def get_dataset_element(split: str, index: int):
             """Retrieves a specific element from the dataset."""
             try:
-                if not hasattr(self, 'current_dataset'):
+                if not hasattr(self, "current_dataset"):
                     raise HTTPException(status_code=404, detail="No dataset loaded")
 
                 dataset = self.current_dataset
-                key = f'x_{split}'
+                key = f"x_{split}"
 
                 if key not in dataset:
-                    raise HTTPException(status_code=404, detail=f"Split {split} not found")
+                    raise HTTPException(
+                        status_code=404, detail=f"Split {split} not found"
+                    )
 
                 data = dataset[key]
                 if not 0 <= index < len(data):
@@ -392,13 +484,14 @@ class NNVisualizationServer:
                     dimensions = list(element.shape)
 
                 return {
-                    'element': element.detach().cpu().numpy().tolist(),
-                    'dimensions': dimensions
+                    "element": element.detach().cpu().numpy().tolist(),
+                    "dimensions": dimensions,
                 }
 
             except Exception as e:
                 print("Error retrieving element:", str(e))
                 import traceback
+
                 print(traceback.format_exc())
                 raise HTTPException(status_code=500, detail=str(e))
 

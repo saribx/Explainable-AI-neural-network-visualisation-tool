@@ -9,71 +9,88 @@
  * - First layer data visualization
  */
 
-import React, {useEffect, useRef, useState} from 'react';
-import * as d3 from 'd3';
-import './App.css';
-import HistogramModel from './HistogramModel';
+import React, { useEffect, useRef, useState } from "react";
+import * as d3 from "d3";
+import "./App.css";
+import HistogramModel from "./HistogramModel";
+import { ISettings } from "./common";
 
 // ============= Types & Interfaces =============
 interface LayerStructure {
-    name: string;
-    neurons: number;
-    layer_type: string;
+  name: string;
+  neurons: number;
+  layer_type: string;
+  modules: undefined | string[];
+  activation_start: number;
 }
 
 interface ConnectionData {
-    x1: number;
-    y1: number;
-    x2: number;
-    y2: number;
-    weight: number;
-    sourceNeuron: number;
-    targetNeuron: number;
+  x1: number;
+  y1: number;
+  x2: number;
+  y2: number;
+  weight: number;
+  sourceNeuron: number;
+  targetNeuron: number;
 }
 
 interface NeuronData {
-    x: number;
-    y: number;
-    values: number[];
-    targets: number[];
-    layerIndex: number;
-    neuronIndex: number;
+  x: number;
+  y: number;
+  values: number[];
+  targets: number[];
+  layerIndex: number;
+  neuronIndex: number;
 }
 
 interface HistogramBin {
-    x0: number | null;
-    x1: number | null;
-    length: number;
-    x: number;
-    y: number;
+  x0: number | null;
+  x1: number | null;
+  length: number;
+  x: number;
+  y: number;
 }
 
 interface VisualizationData {
-    model_structure: LayerStructure[];
-    activations: {
-        values: number[][];
-        targets: number[];
-    }[];
-    weight_matrices: number[][][];
-    weight_range: {
-        min: number;
-        max: number;
-    };
+  model_structure: LayerStructure[];
+  activations: {
+    values: number[][];
+    targets: number[];
+  }[];
+  weight_matrices: number[][][];
+  weight_range: {
+    min: number;
+    max: number;
+  };
+  layers: string[][];
 }
 
 interface ModelNetworkVisualizerProps {
-    visualizationData: VisualizationData;
-    firstLayerData?: number[] | null;
+  visualizationData: VisualizationData;
+  firstLayerData?: number[] | null;
+  settings: ISettings;
+  setSettings: (settings: ISettings) => void;
 }
 
 // Refined D3 Selection type to handle various scenarios
-type D3Selection = d3.Selection<d3.BaseType, unknown, HTMLElement | null, undefined>;
+type D3Selection = d3.Selection<
+  d3.BaseType,
+  unknown,
+  HTMLElement | null,
+  undefined
+>;
 
 // Connection filter type to resolve undefined reference
 interface ConnectionFilter {
-    showAll: boolean;
-    showPositive: boolean;
-    showNegative: boolean;
+  showAll: boolean;
+  showPositive: boolean;
+  showNegative: boolean;
+}
+
+interface SettingsProps {
+  settings: ISettings;
+  setSettings: (settings: ISettings) => void;
+  modelStructure: LayerStructure[];
 }
 
 // ============= Utility Functions =============
@@ -82,514 +99,676 @@ interface ConnectionFilter {
  * Maps a value to a color using a viridis-like color scheme
  */
 const getViridisColor = (value: number): string => {
-    const colors = [
-        [68, 1, 84],    // Dark purple
-        [70, 50, 127],  // Purple
-        [59, 82, 139],  // Blue
-        [33, 144, 141], // Teal
-        [93, 201, 99],  // Green
-        [253, 231, 37]  // Yellow
-    ];
+  const colors = [
+    [68, 1, 84], // Dark purple
+    [70, 50, 127], // Purple
+    [59, 82, 139], // Blue
+    [33, 144, 141], // Teal
+    [93, 201, 99], // Green
+    [253, 231, 37], // Yellow
+  ];
 
-    const v = Math.max(0, Math.min(1, value));
-    const numSegments = colors.length - 1;
-    const segment = Math.min(Math.floor(v * numSegments), numSegments - 1);
-    const segmentT = (v * numSegments) - segment;
+  const v = Math.max(0, Math.min(1, value));
+  const numSegments = colors.length - 1;
+  const segment = Math.min(Math.floor(v * numSegments), numSegments - 1);
+  const segmentT = v * numSegments - segment;
 
-    const c1 = colors[segment];
-    const c2 = colors[segment + 1];
+  const c1 = colors[segment];
+  const c2 = colors[segment + 1];
 
-    const r = Math.round(c1[0] + (c2[0] - c1[0]) * segmentT);
-    const g = Math.round(c1[1] + (c2[1] - c1[1]) * segmentT);
-    const b = Math.round(c1[2] + (c2[2] - c1[2]) * segmentT);
+  const r = Math.round(c1[0] + (c2[0] - c1[0]) * segmentT);
+  const g = Math.round(c1[1] + (c2[1] - c1[1]) * segmentT);
+  const b = Math.round(c1[2] + (c2[2] - c1[2]) * segmentT);
 
-    return `rgb(${r}, ${g}, ${b})`;
+  return `rgb(${r}, ${g}, ${b})`;
 };
 
 /**
  * Creates histogram data from an array of values
  */
 const createHistogram = (
-    values: number[],
-    domain: [number, number],
-    binCount: number
+  values: number[],
+  domain: [number, number],
+  binCount: number
 ): HistogramBin[] => {
-    const bins = d3.bin<number, number>()
-        .domain(domain)
-        .thresholds(binCount)(values);
+  const bins = d3.bin<number, number>().domain(domain).thresholds(binCount)(
+    values
+  );
 
-    return bins.map(bin => ({
-        x0: bin.x0 ?? null,
-        x1: bin.x1 ?? null,
-        length: bin.length,
-        x: bin.x0 ?? 0,
-        y: bin.length
-    }));
+  return bins.map((bin) => ({
+    x0: bin.x0 ?? null,
+    x1: bin.x1 ?? null,
+    length: bin.length,
+    x: bin.x0 ?? 0,
+    y: bin.length,
+  }));
+};
+
+const Settings: React.FC<SettingsProps> = ({
+  settings,
+  setSettings,
+  modelStructure,
+}) => {
+  const handleLayerChange = (layerIndex: number, value: string) => {
+    const newLayers = [...(settings.layers.to_visualize || [])];
+    newLayers[layerIndex] = value;
+    setSettings({ ...settings, layers: { to_visualize: newLayers } });
+  };
+
+  return (
+    <div className="settings">
+      <div className="settings-panel">
+        {modelStructure.map((layer, layerIndex) => (
+          <div key={layer.name} className="settings-layer">
+            {"modules" in layer && layer.modules!.length > 1 && (
+              <>
+                <label>{layer.name}</label>
+                <select
+                  value={settings.layers.to_visualize?.[layerIndex]}
+                  onChange={(e) =>
+                    handleLayerChange(layerIndex, e.target.value)
+                  }
+                >
+                  {layer.modules?.map((module, i) => (
+                    <option key={module} value={module}>
+                      {module}
+                    </option>
+                  ))}
+                </select>
+              </>
+            )}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
 };
 
 /**
  * Main Network Visualizer Component
  */
 const ModelNetworkVisualizer: React.FC<ModelNetworkVisualizerProps> = ({
-                                                                           visualizationData,
-                                                                           firstLayerData
-                                                                       }) => {
-    // ============= State & Refs =============
-    const containerRef = useRef<HTMLDivElement>(null);
-    const [selectedNeuron, setSelectedNeuron] = useState<NeuronData | null>(null);
-    const [connectionFilter, setConnectionFilter] = useState<ConnectionFilter>({
-        showAll: true,
-        showPositive: false,
-        showNegative: false
-    });
+  visualizationData,
+  firstLayerData,
+  settings,
+  setSettings,
+}) => {
+  // ============= State & Refs =============
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [selectedNeuron, setSelectedNeuron] = useState<NeuronData | null>(null);
+  const [connectionFilter, setConnectionFilter] = useState<ConnectionFilter>({
+    showAll: true,
+    showPositive: false,
+    showNegative: false,
+  });
 
-    // ============= D3 Setup =============
-    useEffect(() => {
-        if (!visualizationData || !containerRef.current) return;
+  useEffect(() => {
+    if (visualizationData && !settings.layers.to_visualize) {
+      setSettings({
+        ...settings,
+        layers: {
+          to_visualize: visualizationData.model_structure.map((layer) =>
+            "modules" in layer ? layer.modules?.[0] || "" : ""
+          ),
+        },
+      });
+    }
+  }, [visualizationData, settings, setSettings]);
 
-        const {
-            model_structure,
-            activations,
-            weight_matrices
-        } = visualizationData;
+  // ============= D3 Setup =============
+  useEffect(() => {
+    if (!visualizationData || !containerRef.current) return;
 
-        // Clear previous visualization
-        d3.select(containerRef.current).selectAll("*").remove();
+    const { model_structure, weight_matrices } = visualizationData;
 
-        // Setup dimensions and scales
-        const margin = {top: 200, right: 100, bottom: 100, left: 100};
-        const width = Math.max(1200, containerRef.current.clientWidth - margin.left - margin.right);
-        const height = Math.max(1000, containerRef.current.clientHeight - margin.top - margin.bottom);
-        const neuronRadius = 25;
-        const layerSpacing = width / (model_structure.length - 1);
-        const neuronSpacingFactor = 2;
+    // Clear previous visualization
+    d3.select(containerRef.current).selectAll("*").remove();
 
-        // Create SVG container
-        const svg = d3.select(containerRef.current)
-            .append('svg')
-            .attr('width', '100%')
-            .attr('height', '100%')
-            .attr('viewBox', `0 0 ${width + margin.left + margin.right} ${height + margin.top + margin.bottom}`)
-            .attr('preserveAspectRatio', 'xMidYMid meet') as unknown as D3Selection;
-
-        // Create main group
-        const mainGroup = svg.append('g')
-            .attr('transform', `translate(${margin.left},${margin.top})`) as unknown as D3Selection;
-
-
-        // Setup zoom behavior
-        const zoom = d3.zoom<Element, unknown>()
-            .scaleExtent([0.5, 4]) // Sets the zoom scale range
-            .on('zoom', (event) => {
-                const {transform} = event;
-
-                // Update network links
-                mainGroup.selectAll('.network-link')
-                    .attr('y1', (d: any) => d.y1 * transform.k)
-                    .attr('y2', (d: any) => d.y2 * transform.k);
-
-                // Update neuron groups
-                mainGroup.selectAll('.neuron-group')
-                    .attr('transform', (d: any) => `translate(${d.x}, ${d.y * transform.k})`);
-
-                // Update input and hidden layer visualization groups
-                mainGroup.select('.input-pixels')
-                    .attr('transform', `scale(1, ${transform.k})`);
-
-                mainGroup.select('.hidden-pixels')
-                    .attr('transform', `translate(${layerSpacing}, 0) scale(1, ${transform.k})`);
-            });
-
-
-        (svg as any).call(zoom)
-            .call(zoom.transform, d3.zoomIdentity.translate(margin.left, margin.top));
-
-        // Create color scale for weights
-        const weightColorScale = d3.scaleSequential(d3.interpolateRdBu)
-            .domain([visualizationData.weight_range.max, visualizationData.weight_range.min]);
-
-        // Draw network structure
-        const connections = createConnections(model_structure, weight_matrices, layerSpacing, height, neuronSpacingFactor);
-        drawConnections(mainGroup, connections, weightColorScale, connectionFilter);
-        drawNeurons(mainGroup, model_structure, activations, layerSpacing, height, neuronRadius, neuronSpacingFactor, setSelectedNeuron);
-
-        // Draw controls and legends
-        if (firstLayerData) {
-            drawInputVisualizations(mainGroup, firstLayerData, height, model_structure, layerSpacing, neuronSpacingFactor);
-        }
-        drawControls(svg, width, weightColorScale, connectionFilter, setConnectionFilter);
-
-    }, [visualizationData, firstLayerData, connectionFilter]);
-
-    return (
-        <div className="model-network-visualization">
-            <div ref={containerRef} className="network-container"/>
-            {selectedNeuron && (
-                <HistogramModel
-                    data={{
-                        values: selectedNeuron.values,
-                        targets: selectedNeuron.targets
-                    }}
-                    onClose={() => setSelectedNeuron(null)}
-                    layerIndex={selectedNeuron.layerIndex}
-                    neuronIndex={selectedNeuron.neuronIndex}
-                />
-            )}
-        </div>
+    // Setup dimensions and scales
+    const margin = { top: 200, right: 100, bottom: 100, left: 100 };
+    const width = Math.max(
+      1200,
+      containerRef.current.clientWidth - margin.left - margin.right
     );
+    const height = Math.max(
+      1000,
+      containerRef.current.clientHeight - margin.top - margin.bottom
+    );
+    const neuronRadius = 25;
+    const layerSpacing = width / (model_structure.length - 1);
+    const neuronSpacingFactor = 2;
+
+    // Create SVG container
+    const svg = d3
+      .select(containerRef.current)
+      .append("svg")
+      .attr("width", "100%")
+      .attr("height", "100%")
+      .attr(
+        "viewBox",
+        `0 0 ${width + margin.left + margin.right} ${
+          height + margin.top + margin.bottom
+        }`
+      )
+      .attr("preserveAspectRatio", "xMidYMid meet") as unknown as D3Selection;
+
+    // Create main group
+    const mainGroup = svg
+      .append("g")
+      .attr(
+        "transform",
+        `translate(${margin.left},${margin.top})`
+      ) as unknown as D3Selection;
+
+    // Setup zoom behavior
+    const zoom = d3
+      .zoom<Element, unknown>()
+      .scaleExtent([0.5, 4]) // Sets the zoom scale range
+      .on("zoom", (event) => {
+        const { transform } = event;
+
+        // Update network links
+        mainGroup
+          .selectAll(".network-link")
+          .attr("y1", (d: any) => d.y1 * transform.k)
+          .attr("y2", (d: any) => d.y2 * transform.k);
+
+        // Update neuron groups
+        mainGroup
+          .selectAll(".neuron-group")
+          .attr(
+            "transform",
+            (d: any) => `translate(${d.x}, ${d.y * transform.k})`
+          );
+
+        // Update input and hidden layer visualization groups
+        mainGroup
+          .select(".input-pixels")
+          .attr("transform", `scale(1, ${transform.k})`);
+
+        mainGroup
+          .select(".hidden-pixels")
+          .attr(
+            "transform",
+            `translate(${layerSpacing}, 0) scale(1, ${transform.k})`
+          );
+      });
+
+    (svg as any)
+      .call(zoom)
+      .call(zoom.transform, d3.zoomIdentity.translate(margin.left, margin.top));
+
+    // Create color scale for weights
+    const weightColorScale = d3
+      .scaleSequential(d3.interpolateRdBu)
+      .domain([
+        visualizationData.weight_range.max,
+        visualizationData.weight_range.min,
+      ]);
+
+    // Draw network structure
+    const connections = createConnections(
+      model_structure,
+      weight_matrices,
+      layerSpacing,
+      height,
+      neuronSpacingFactor
+    );
+    drawConnections(mainGroup, connections, weightColorScale, connectionFilter);
+    drawNeurons(
+      mainGroup,
+      model_structure,
+      visualizationData,
+      layerSpacing,
+      height,
+      neuronRadius,
+      neuronSpacingFactor,
+      setSelectedNeuron,
+      settings
+    );
+
+    // Draw controls and legends
+    if (firstLayerData) {
+      drawInputVisualizations(
+        mainGroup,
+        firstLayerData,
+        height,
+        model_structure,
+        layerSpacing,
+        neuronSpacingFactor
+      );
+    }
+    drawControls(
+      svg,
+      width,
+      weightColorScale,
+      connectionFilter,
+      setConnectionFilter
+    );
+  }, [visualizationData, firstLayerData, connectionFilter, settings.layers]);
+
+  return (
+    <div className="model-network-visualization">
+      <div className="network-container">
+        <Settings
+          settings={settings}
+          setSettings={setSettings}
+          modelStructure={visualizationData.model_structure}
+        />
+        <div ref={containerRef} />
+      </div>
+      {selectedNeuron && (
+        <HistogramModel
+          data={{
+            values: selectedNeuron.values,
+            targets: selectedNeuron.targets,
+          }}
+          onClose={() => setSelectedNeuron(null)}
+          layerIndex={selectedNeuron.layerIndex}
+          neuronIndex={selectedNeuron.neuronIndex}
+        />
+      )}
+    </div>
+  );
 };
 
 // ============= Helper Functions =============
 
 const createConnections = (
-    model_structure: LayerStructure[],
-    weight_matrices: number[][][],
-    layerSpacing: number,
-    height: number,
-    neuronSpacingFactor: number
+  model_structure: LayerStructure[],
+  weight_matrices: number[][][],
+  layerSpacing: number,
+  height: number,
+  neuronSpacingFactor: number
 ): ConnectionData[] => {
-    const connections: ConnectionData[] = [];
+  const connections: ConnectionData[] = [];
 
-    model_structure.forEach((layer, layerIndex) => {
-        if (layerIndex < model_structure.length - 1) {
-            const nextLayer = model_structure[layerIndex + 1];
-            const currentY = (height / Math.max(layer.neurons + 1, 2)) * neuronSpacingFactor;
-            const nextY = (height / Math.max(nextLayer.neurons + 1, 2)) * neuronSpacingFactor;
-            const weightMatrix = weight_matrices[layerIndex] || [];
+  model_structure.forEach((layer, layerIndex) => {
+    if (layerIndex < model_structure.length - 1) {
+      const nextLayer = model_structure[layerIndex + 1];
+      const currentY =
+        (height / Math.max(layer.neurons + 1, 2)) * neuronSpacingFactor;
+      const nextY =
+        (height / Math.max(nextLayer.neurons + 1, 2)) * neuronSpacingFactor;
+      const weightMatrix = weight_matrices[layerIndex] || [];
 
-            for (let i = 0; i < layer.neurons; i++) {
-                for (let j = 0; j < nextLayer.neurons; j++) {
-                    connections.push({
-                        x1: layerIndex * layerSpacing,
-                        y1: (i + 0.5) * (currentY / neuronSpacingFactor),
-                        x2: (layerIndex + 1) * layerSpacing,
-                        y2: (j + 0.5) * (nextY / neuronSpacingFactor),
-                        weight: weightMatrix[j]?.[i] || 0,
-                        sourceNeuron: i,
-                        targetNeuron: j
-                    });
-                }
-            }
+      for (let i = 0; i < layer.neurons; i++) {
+        for (let j = 0; j < nextLayer.neurons; j++) {
+          connections.push({
+            x1: layerIndex * layerSpacing,
+            y1: (i + 0.5) * (currentY / neuronSpacingFactor),
+            x2: (layerIndex + 1) * layerSpacing,
+            y2: (j + 0.5) * (nextY / neuronSpacingFactor),
+            weight: weightMatrix[j]?.[i] || 0,
+            sourceNeuron: i,
+            targetNeuron: j,
+          });
         }
-    });
+      }
+    }
+  });
 
-    return connections;
+  return connections;
 };
 
 const drawConnections = (
-    group: D3Selection,
-    connections: ConnectionData[],
-    colorScale: d3.ScaleSequential<string>,
-    filter: ConnectionFilter
+  group: D3Selection,
+  connections: ConnectionData[],
+  colorScale: d3.ScaleSequential<string>,
+  filter: ConnectionFilter
 ) => {
-    group.selectAll('.network-link')
-        .data(connections)
-        .enter()
-        .append('line')
-        .attr('class', 'network-link')
-        .attr('x1', d => d.x1)
-        .attr('y1', d => d.y1)
-        .attr('x2', d => d.x2)
-        .attr('y2', d => d.y2)
-        .style('stroke', d => colorScale(d.weight))
-        .style('stroke-width', d => Math.abs(d.weight) * 3 + 0.5)
-        .style('visibility', d => {
-            if (filter.showAll) return 'visible';
-            if (filter.showPositive && d.weight > 0.3) return 'visible';
-            if (filter.showNegative && d.weight < -0.3) return 'visible';
-            return 'hidden';
-        })
-        .append('title')
-        .text(d => `Weight: ${d.weight.toFixed(3)}`);
+  group
+    .selectAll(".network-link")
+    .data(connections)
+    .enter()
+    .append("line")
+    .attr("class", "network-link")
+    .attr("x1", (d) => d.x1)
+    .attr("y1", (d) => d.y1)
+    .attr("x2", (d) => d.x2)
+    .attr("y2", (d) => d.y2)
+    .style("stroke", (d) => colorScale(d.weight))
+    .style("stroke-width", (d) => Math.abs(d.weight) * 3 + 0.5)
+    .style("visibility", (d) => {
+      if (filter.showAll) return "visible";
+      if (filter.showPositive && d.weight > 0.3) return "visible";
+      if (filter.showNegative && d.weight < -0.3) return "visible";
+      return "hidden";
+    })
+    .append("title")
+    .text((d) => `Weight: ${d.weight.toFixed(3)}`);
 };
 
 const drawNeurons = (
-    group: D3Selection,
-    layers: LayerStructure[],
-    activations: VisualizationData['activations'],
-    layerSpacing: number,
-    height: number,
-    radius: number,
-    spacingFactor: number,
-    setSelected: (neuron: NeuronData) => void
+  group: D3Selection,
+  layers: LayerStructure[],
+  visualizationData: VisualizationData,
+  layerSpacing: number,
+  height: number,
+  radius: number,
+  spacingFactor: number,
+  setSelected: (neuron: NeuronData) => void,
+  settings: ISettings
 ) => {
-    layers.forEach((layer, layerIndex) => {
-        const neuronY = (height / Math.max(layer.neurons + 1, 2)) * spacingFactor;
+  const activations = visualizationData.activations;
 
-        for (let i = 0; i < layer.neurons; i++) {
-            const neuronData: NeuronData = {
-                x: layerIndex * layerSpacing,
-                y: (i + 0.5) * (neuronY / spacingFactor),
-                values: (activations[layerIndex]?.values?.map(x => x[i]) ?? []) as number[],
-                targets: (activations[layerIndex]?.targets ?? []) as number[],
-                layerIndex,
-                neuronIndex: i
-            };
+  layers.forEach((layer, layerIndex) => {
+    const neuronY = (height / Math.max(layer.neurons + 1, 2)) * spacingFactor;
+    const moduleToVisualize = settings.layers.to_visualize?.[layerIndex];
+    const activationStart = layer.activation_start;
+    const activationIdx =
+      layerIndex == 0
+        ? 0
+        : activationStart + layer.modules?.indexOf(moduleToVisualize) ?? 0;
 
-            const neuronGroup = group.append('g')
-                .datum(neuronData)
-                .attr('class', 'neuron-group')
-                .attr('transform', `translate(${neuronData.x},${neuronData.y})`)
-                .style('cursor', 'pointer')
-                .on('click', (event: MouseEvent) => {
-                    event.stopPropagation();
-                    setSelected(neuronData);
-                }) as unknown as D3Selection;
+    console.log(layerIndex, activationStart, activationIdx);
 
-            neuronGroup.append('circle')
-                .attr('class', 'network-node')
-                .attr('r', radius);
+    for (let i = 0; i < layer.neurons; i++) {
+      const neuronData: NeuronData = {
+        x: layerIndex * layerSpacing,
+        y: (i + 0.5) * (neuronY / spacingFactor),
+        values: (activations[activationIdx]?.values?.map((x) => x[i]) ??
+          []) as number[],
+        targets: (activations[activationIdx]?.targets ?? []) as number[],
+        layerIndex,
+        neuronIndex: i,
+      };
 
-            drawNeuronHistogram(neuronGroup, neuronData, radius);
-        }
-    });
+      const neuronGroup = group
+        .append("g")
+        .datum(neuronData)
+        .attr("class", "neuron-group")
+        .attr("transform", `translate(${neuronData.x},${neuronData.y})`)
+        .style("cursor", "pointer")
+        .on("click", (event: MouseEvent) => {
+          event.stopPropagation();
+          setSelected(neuronData);
+        }) as unknown as D3Selection;
+
+      neuronGroup
+        .append("circle")
+        .attr("class", "network-node")
+        .attr("r", radius);
+
+      drawNeuronHistogram(neuronGroup, neuronData, radius);
+    }
+  });
 };
 
 const drawNeuronHistogram = (
-    group: D3Selection,
-    data: NeuronData,
-    radius: number
+  group: D3Selection,
+  data: NeuronData,
+  radius: number
 ) => {
-    const histData = data.values;
-    const extent = d3.extent(histData) as [number, number];
-    const histogram = createHistogram(histData, extent, 8);
+  const histData = data.values;
+  const extent = d3.extent(histData) as [number, number];
+  const histogram = createHistogram(histData, extent, 8);
 
-    const maxBinLength = d3.max(histogram, d => d.length) ?? 0;
+  const maxBinLength = d3.max(histogram, (d) => d.length) ?? 0;
 
-    const xScale = d3.scaleLinear()
-        .domain([histogram[0]?.x0 ?? 0, histogram[histogram.length - 1]?.x1 ?? 1])
-        .range([-radius + 6, radius - 6]);
+  const xScale = d3
+    .scaleLinear()
+    .domain([histogram[0]?.x0 ?? 0, histogram[histogram.length - 1]?.x1 ?? 1])
+    .range([-radius + 6, radius - 6]);
 
-    const yScale = d3.scaleLinear()
-        .domain([0, maxBinLength])
-        .range([radius - 6, -radius + 6]);
+  const yScale = d3
+    .scaleLinear()
+    .domain([0, maxBinLength])
+    .range([radius - 6, -radius + 6]);
 
-    const histogramGroup = group.append('g')
-        .attr('class', 'histogram-group');
+  const histogramGroup = group.append("g").attr("class", "histogram-group");
 
-    if (!data.targets?.length) {
-        histogramGroup.selectAll('rect')
-            .data(histogram)
-            .enter()
-            .append('rect')
-            .attr('class', 'histogram-bar')
-            .attr('x', d => xScale(d.x0 ?? 0))
-            .attr('width', d => Math.max(2, xScale(d.x1 ?? 0) - xScale(d.x0 ?? 0) - 1))
-            .attr('y', d => yScale(d.length))
-            .attr('height', d => Math.max(0, yScale(0) - yScale(d.length)))
-            .style('fill', '#4f9deb')
-            .style('opacity', 0.6);
-    } else {
-        const [class0Data, class1Data] = [
-            histData.filter((_, i) => data.targets[i] === 0),
-            histData.filter((_, i) => data.targets[i] === 1)
-        ].map(d => createHistogram(d, extent, 8));
+  if (!data.targets?.length) {
+    histogramGroup
+      .selectAll("rect")
+      .data(histogram)
+      .enter()
+      .append("rect")
+      .attr("class", "histogram-bar")
+      .attr("x", (d) => xScale(d.x0 ?? 0))
+      .attr("width", (d) =>
+        Math.max(2, xScale(d.x1 ?? 0) - xScale(d.x0 ?? 0) - 1)
+      )
+      .attr("y", (d) => yScale(d.length))
+      .attr("height", (d) => Math.max(0, yScale(0) - yScale(d.length)))
+      .style("fill", "#4f9deb")
+      .style("opacity", 0.6);
+  } else {
+    const [class0Data, class1Data] = [
+      histData.filter((_, i) => data.targets[i] === 0),
+      histData.filter((_, i) => data.targets[i] === 1),
+    ].map((d) => createHistogram(d, extent, 8));
 
-        ['class0-bar', 'class1-bar'].forEach((className, idx) => {
-            histogramGroup.selectAll(`.${className}`)
-                .data(idx === 0 ? class0Data : class1Data)
-                .enter()
-                .append('rect')
-                .attr('class', `histogram-bar ${className}`)
-                .attr('x', d => xScale(d.x0 ?? 0))
-                .attr('width', d => Math.max(2, xScale(d.x1 ?? 0) - xScale(d.x0 ?? 0) - 1))
-                .attr('y', d => yScale(d.length))
-                .attr('height', d => Math.max(0, yScale(0) - yScale(d.length)))
-                .style('fill', idx === 0 ? 'red' : 'blue')
-                .style('opacity', 0.6);
-        });
-    }
+    ["class0-bar", "class1-bar"].forEach((className, idx) => {
+      histogramGroup
+        .selectAll(`.${className}`)
+        .data(idx === 0 ? class0Data : class1Data)
+        .enter()
+        .append("rect")
+        .attr("class", `histogram-bar ${className}`)
+        .attr("x", (d) => xScale(d.x0 ?? 0))
+        .attr("width", (d) =>
+          Math.max(2, xScale(d.x1 ?? 0) - xScale(d.x0 ?? 0) - 1)
+        )
+        .attr("y", (d) => yScale(d.length))
+        .attr("height", (d) => Math.max(0, yScale(0) - yScale(d.length)))
+        .style("fill", idx === 0 ? "red" : "blue")
+        .style("opacity", 0.6);
+    });
+  }
 };
 
 const drawInputVisualizations = (
-    group: D3Selection,
-    data: number[],
-    height: number,
-    modelStructure: LayerStructure[],
-    layerSpacing: number,
-    neuronSpacingFactor: number
+  group: D3Selection,
+  data: number[],
+  height: number,
+  modelStructure: LayerStructure[],
+  layerSpacing: number,
+  neuronSpacingFactor: number
 ) => {
-    // Draw input layer visualization
-    const pixelSize = 15;
-    const pixelGap = 2;
-    const inputNeurons = modelStructure[0].neurons;
-    const firstHiddenNeurons = modelStructure[1].neurons;
+  // Draw input layer visualization
+  const pixelSize = 15;
+  const pixelGap = 2;
+  const inputNeurons = modelStructure[0].neurons;
+  const firstHiddenNeurons = modelStructure[1].neurons;
 
-    // Input layer spacing
-    const inputPixelSpacing = (height / Math.max(inputNeurons + 1, 2)) * neuronSpacingFactor;
+  // Input layer spacing
+  const inputPixelSpacing =
+    (height / Math.max(inputNeurons + 1, 2)) * neuronSpacingFactor;
 
-    // First hidden layer spacing
-    const hiddenPixelSpacing = (height / Math.max(firstHiddenNeurons + 1, 2)) * neuronSpacingFactor;
+  // First hidden layer spacing
+  const hiddenPixelSpacing =
+    (height / Math.max(firstHiddenNeurons + 1, 2)) * neuronSpacingFactor;
 
-    // Create group for input visualizations that will be affected by zoom
-    const visualizationGroup = group.append('g')
-        .attr('class', 'input-visualizations');
+  // Create group for input visualizations that will be affected by zoom
+  const visualizationGroup = group
+    .append("g")
+    .attr("class", "input-visualizations");
 
-    // Draw input layer pixels
-    const inputGroup = visualizationGroup.append('g')
-        .attr('class', 'input-pixels');
+  // Draw input layer pixels
+  const inputGroup = visualizationGroup
+    .append("g")
+    .attr("class", "input-pixels");
 
-    data.forEach((value, i) => {
-        const yPos = (i + 0.5) * (inputPixelSpacing / neuronSpacingFactor);
+  data.forEach((value, i) => {
+    const yPos = (i + 0.5) * (inputPixelSpacing / neuronSpacingFactor);
 
-        inputGroup.append('rect')
-            .attr('x', -40)
-            .attr('y', yPos - pixelSize / 2)
-            .attr('width', pixelSize)
-            .attr('height', pixelSize)
-            .attr('fill', getViridisColor(value))
-            .append('title')
-            .text(value.toFixed(2));
+    inputGroup
+      .append("rect")
+      .attr("x", -40)
+      .attr("y", yPos - pixelSize / 2)
+      .attr("width", pixelSize)
+      .attr("height", pixelSize)
+      .attr("fill", getViridisColor(value))
+      .append("title")
+      .text(value.toFixed(2));
 
-        inputGroup.append('text')
-            .attr('x', -42)
-            .attr('y', yPos)
-            .attr('text-anchor', 'end')
-            .attr('dominant-baseline', 'middle')
-            .attr('font-size', '8px')
-            .attr('fill', '#666')
-            .text(value.toFixed(2));
-    });
+    inputGroup
+      .append("text")
+      .attr("x", -42)
+      .attr("y", yPos)
+      .attr("text-anchor", "end")
+      .attr("dominant-baseline", "middle")
+      .attr("font-size", "8px")
+      .attr("fill", "#666")
+      .text(value.toFixed(2));
+  });
 
-    // Draw first hidden layer pixels (reshaped)
-    const hiddenGroup = visualizationGroup.append('g')
-        .attr('class', 'hidden-pixels')
-        .attr('transform', `translate(${layerSpacing}, 0)`);
+  // Draw first hidden layer pixels (reshaped)
+  const hiddenGroup = visualizationGroup
+    .append("g")
+    .attr("class", "hidden-pixels")
+    .attr("transform", `translate(${layerSpacing}, 0)`);
 
-    // Reshape the data to match first hidden layer neurons
-    const reshapedData = [];
-    const elementsPer = Math.ceil(data.length / firstHiddenNeurons);
+  // Reshape the data to match first hidden layer neurons
+  const reshapedData = [];
+  const elementsPer = Math.ceil(data.length / firstHiddenNeurons);
 
-    for (let i = 0; i < firstHiddenNeurons; i++) {
-        const start = i * elementsPer;
-        const chunk = data.slice(start, start + elementsPer);
-        const avgValue = chunk.reduce((a, b) => a + b, 0) / chunk.length;
-        reshapedData.push(avgValue);
-    }
+  for (let i = 0; i < firstHiddenNeurons; i++) {
+    const start = i * elementsPer;
+    const chunk = data.slice(start, start + elementsPer);
+    const avgValue = chunk.reduce((a, b) => a + b, 0) / chunk.length;
+    reshapedData.push(avgValue);
+  }
 
-    reshapedData.forEach((value, i) => {
-        const yPos = (i + 0.5) * (hiddenPixelSpacing / neuronSpacingFactor);
+  reshapedData.forEach((value, i) => {
+    const yPos = (i + 0.5) * (hiddenPixelSpacing / neuronSpacingFactor);
 
-        hiddenGroup.append('rect')
-            .attr('x', -40)
-            .attr('y', yPos - pixelSize / 2)
-            .attr('width', pixelSize)
-            .attr('height', pixelSize)
-            .attr('fill', getViridisColor(value))
-            .append('title')
-            .text(value.toFixed(2));
+    hiddenGroup
+      .append("rect")
+      .attr("x", -40)
+      .attr("y", yPos - pixelSize / 2)
+      .attr("width", pixelSize)
+      .attr("height", pixelSize)
+      .attr("fill", getViridisColor(value))
+      .append("title")
+      .text(value.toFixed(2));
 
-        hiddenGroup.append('text')
-            .attr('x', -42)
-            .attr('y', yPos)
-            .attr('text-anchor', 'end')
-            .attr('dominant-baseline', 'middle')
-            .attr('font-size', '8px')
-            .attr('fill', '#666')
-            .text(value.toFixed(2));
-    });
+    hiddenGroup
+      .append("text")
+      .attr("x", -42)
+      .attr("y", yPos)
+      .attr("text-anchor", "end")
+      .attr("dominant-baseline", "middle")
+      .attr("font-size", "8px")
+      .attr("fill", "#666")
+      .text(value.toFixed(2));
+  });
 };
 
 const drawControls = (
-    svg: D3Selection,
-    width: number,
-    colorScale: d3.ScaleSequential<string>,
-    filter: { showAll: boolean; showPositive: boolean; showNegative: boolean },
-    setFilter: (filter: { showAll: boolean; showPositive: boolean; showNegative: boolean }) => void
+  svg: D3Selection,
+  width: number,
+  colorScale: d3.ScaleSequential<string>,
+  filter: { showAll: boolean; showPositive: boolean; showNegative: boolean },
+  setFilter: (filter: {
+    showAll: boolean;
+    showPositive: boolean;
+    showNegative: boolean;
+  }) => void
 ) => {
-    const legendWidth = 800;
-    const legendHeight = 20;
-    const legendX = (width - legendWidth) / 2;
+  const legendWidth = 800;
+  const legendHeight = 20;
+  const legendX = (width - legendWidth) / 2;
 
-    // Create color gradient
-    const defs = svg.append('defs');
-    const gradient = defs.append('linearGradient')
-        .attr('id', 'weight-gradient')
-        .attr('x1', '0%')
-        .attr('x2', '100%');
+  // Create color gradient
+  const defs = svg.append("defs");
+  const gradient = defs
+    .append("linearGradient")
+    .attr("id", "weight-gradient")
+    .attr("x1", "0%")
+    .attr("x2", "100%");
 
-    gradient.selectAll('stop')
-        .data(d3.range(-1, 1.1, 0.1))
-        .enter()
-        .append('stop')
-        .attr('offset', d => ((d + 1) * 50) + '%')
-        .attr('stop-color', d => colorScale(d));
+  gradient
+    .selectAll("stop")
+    .data(d3.range(-1, 1.1, 0.1))
+    .enter()
+    .append("stop")
+    .attr("offset", (d) => (d + 1) * 50 + "%")
+    .attr("stop-color", (d) => colorScale(d));
 
-    // Create controls group
-    const controls = svg.append('g')
-        .attr('class', 'filter-controls')
-        .attr('transform', `translate(${legendX}, 50)`);
+  // Create controls group
+  const controls = svg
+    .append("g")
+    .attr("class", "filter-controls")
+    .attr("transform", `translate(${legendX}, 50)`);
 
-    controls.append('text')
-        .attr('x', 0)
-        .attr('y', 0)
-        .text('Show connections:')
-        .style('font-size', '12px');
+  controls
+    .append("text")
+    .attr("x", 0)
+    .attr("y", 0)
+    .text("Show connections:")
+    .style("font-size", "12px");
 
-    const totalWidth = 400;
-    const startX = (legendWidth - totalWidth) / 2;
+  const totalWidth = 400;
+  const startX = (legendWidth - totalWidth) / 2;
 
-    // Create filter options
-    const options = [
-        {x: startX, label: 'All', type: 'showAll'},
-        {x: startX + 140, label: 'Strong Positive', type: 'showPositive'},
-        {x: startX + 300, label: 'Strong Negative', type: 'showNegative'}
-    ] as const;
+  // Create filter options
+  const options = [
+    { x: startX, label: "All", type: "showAll" },
+    { x: startX + 140, label: "Strong Positive", type: "showPositive" },
+    { x: startX + 300, label: "Strong Negative", type: "showNegative" },
+  ] as const;
 
-    options.forEach(({x, label, type}) => {
-        const checked = filter[type];
-        controls.append('g')
-            .attr('transform', `translate(${x}, -5)`)
-            .style('cursor', 'pointer')
-            .on('click', () => {
-                const newFilter = {
-                    showAll: false,
-                    showPositive: false,
-                    showNegative: false,
-                    [type]: true
-                };
-                setFilter(newFilter);
-            })
-            .append('text')
-            .attr('class', 'filter-option')
-            .attr('data-type', type)
-            .attr('x', 20)
-            .attr('y', 10)
-            .text(label)
-            .attr('fill', checked ? '#2563eb' : '#666')
-            .attr('font-weight', 'bold')
-            .style('font-size', '14px')
-            .style('letter-spacing', '0.5px');
-    });
+  options.forEach(({ x, label, type }) => {
+    const checked = filter[type];
+    controls
+      .append("g")
+      .attr("transform", `translate(${x}, -5)`)
+      .style("cursor", "pointer")
+      .on("click", () => {
+        const newFilter = {
+          showAll: false,
+          showPositive: false,
+          showNegative: false,
+          [type]: true,
+        };
+        setFilter(newFilter);
+      })
+      .append("text")
+      .attr("class", "filter-option")
+      .attr("data-type", type)
+      .attr("x", 20)
+      .attr("y", 10)
+      .text(label)
+      .attr("fill", checked ? "#2563eb" : "#666")
+      .attr("font-weight", "bold")
+      .style("font-size", "14px")
+      .style("letter-spacing", "0.5px");
+  });
 
-    // Create legend
-    const legend = svg.append('g')
-        .attr('class', 'legend')
-        .attr('transform', `translate(${legendX},100)`);
+  // Create legend
+  const legend = svg
+    .append("g")
+    .attr("class", "legend")
+    .attr("transform", `translate(${legendX},100)`);
 
-    legend.append('rect')
-        .attr('width', legendWidth)
-        .attr('height', legendHeight)
-        .style('fill', 'url(#weight-gradient)');
+  legend
+    .append("rect")
+    .attr("width", legendWidth)
+    .attr("height", legendHeight)
+    .style("fill", "url(#weight-gradient)");
 
+  const legendScale = d3
+    .scaleLinear()
+    .domain([colorScale.domain()[1], colorScale.domain()[0]])
+    .range([0, legendWidth]);
 
-    const legendScale = d3.scaleLinear()
-        .domain([colorScale.domain()[1], colorScale.domain()[0]])
-        .range([0, legendWidth]);
+  const legendAxis = d3
+    .axisBottom(legendScale)
+    .ticks(5)
+    .tickFormat(d3.format(".1f"));
 
-    const legendAxis = d3.axisBottom(legendScale)
-        .ticks(5)
-        .tickFormat(d3.format('.1f'));
-
-    legend.append('g')
-        .attr('transform', `translate(0,${legendHeight})`)
-        .call(legendAxis)
-        .append('text')
-        .attr('x', legendWidth / 2)
-        .attr('y', 30)
-        .attr('fill', 'black')
-        .attr('text-anchor', 'middle')
-        .text('Connection Weights');
+  legend
+    .append("g")
+    .attr("transform", `translate(0,${legendHeight})`)
+    .call(legendAxis)
+    .append("text")
+    .attr("x", legendWidth / 2)
+    .attr("y", 30)
+    .attr("fill", "black")
+    .attr("text-anchor", "middle")
+    .text("Connection Weights");
 };
 
 export default ModelNetworkVisualizer;
