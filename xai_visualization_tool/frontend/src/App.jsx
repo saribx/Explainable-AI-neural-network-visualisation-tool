@@ -206,7 +206,7 @@ function App() {
                                 <polyline points="7 10 12 15 17 10"/>
                                 <line x1="12" y1="15" x2="12" y2="3"/>
                             </svg>
-                            Upload Activations
+                            Data to visualize
                             {uploadSuccess.act && (
                                 <svg className="success-check" viewBox="0 0 24 24" fill="none" stroke="currentColor"
                                      strokeWidth="2">

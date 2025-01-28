@@ -316,7 +316,7 @@ const drawNeurons = (
             const neuronData: NeuronData = {
                 x: layerIndex * layerSpacing,
                 y: (i + 0.5) * (neuronY / spacingFactor),
-                values: (activations[layerIndex]?.values?.[i] ?? []) as number[],
+                values: (activations[layerIndex]?.values?.map(x => x[i]) ?? []) as number[],
                 targets: (activations[layerIndex]?.targets ?? []) as number[],
                 layerIndex,
                 neuronIndex: i

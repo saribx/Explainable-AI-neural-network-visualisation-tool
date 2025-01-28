@@ -113,13 +113,7 @@ class NetworkAnalyzer:
         # Process weight matrices into visualization format
         processed_weights = []
         for matrix in weight_matrices:
-            # Normalize weights to [-1, 1] range for visualization
-            max_abs = np.max(np.abs(matrix))
-            if max_abs > 0:
-                normalized = matrix / max_abs
-            else:
-                normalized = matrix
-            processed_weights.append(normalized.tolist())
+            processed_weights.append(matrix.tolist())
 
         return {
             "model_structure": layers,
@@ -132,27 +126,20 @@ class FileHandler:
     """Manages file operations for model and activation data."""
 
     def __init__(self):
-        # Change to a directory we're sure we can write to
-        self.upload_dir = Path("./uploads")
+        self.upload_dir = Path("/tmp")
+        # Get the parent directory of the backend folder (project root)
         self.root_dir = Path(__file__).parent.parent
         self.example_files = {
             "model": self.root_dir / "linear_correlated_model.pt",
             "activations": self.root_dir / "acts_linear_correlated_model.pt",
         }
-        # Create uploads directory if it doesn't exist
-        self.upload_dir.mkdir(parents=True, exist_ok=True)
 
     async def save_upload(self, file: UploadFile, file_type: str) -> Path:
-        """Saves an uploaded file to the uploads directory."""
-        try:
-            file_path = self.upload_dir / file.filename
-            with file_path.open("wb") as buffer:
-                content = await file.read()
-                buffer.write(content)
-            return file_path
-        except Exception as e:
-            print(f"Error saving file: {str(e)}")
-            raise
+        """Saves an uploaded file to the temporary directory."""
+        file_path = self.upload_dir / file.filename
+        with open(file_path, "wb") as buffer:
+            buffer.write(await file.read())
+        return file_path
 
     def copy_example_files(self) -> Dict[str, Path]:
         """Copies example files to the temporary directory."""
@@ -315,16 +302,9 @@ class NNVisualizationServer:
         async def upload_dataset(file: UploadFile = File(...)):
             """Handles dataset file upload and analyzes its structure."""
             try:
-                if not file:
-                    raise HTTPException(status_code=400, detail="No file provided")
-
-                print(f"Received file: {file.filename}")  # Debug log
                 file_path = await self.file_handler.save_upload(file, "dataset")
-                print(f"File saved to: {file_path}")  # Debug log
-
                 dataset = torch.load(file_path)
-                print(f"Dataset loaded successfully")  # Debug log
-                self.current_dataset = dataset
+                self.current_dataset = dataset  # Store dataset for later use
 
                 # Analyze dataset structure
                 splits = {}
@@ -340,10 +320,14 @@ class NNVisualizationServer:
                             'available': True
                         }
 
+                        # Get first element and dimensions from train set if available
                         if split == 'train' and first_element is None:
+                            # Get first element
                             first_tensor = dataset[key][0]
+                            # If it's 1D, try to determine if it should be square
                             if len(first_tensor.shape) == 1:
                                 size = int(np.sqrt(first_tensor.shape[0]))
+                                # If it's a perfect square
                                 if size * size == first_tensor.shape[0]:
                                     dimensions = [size, size]
                                     first_element = first_tensor.detach().cpu().numpy().tolist()
@@ -351,7 +335,8 @@ class NNVisualizationServer:
                                 dimensions = list(first_tensor.shape)
                                 first_element = first_tensor.detach().cpu().numpy().tolist()
 
-                print(f"Analysis complete. Dimensions: {dimensions}")  # Debug log
+                print(f"Dimensions: {dimensions}")  # Debug print
+                print(f"First element shape: {len(first_element)}")  # Debug print
 
                 return {
                     'splits': splits,
@@ -360,13 +345,10 @@ class NNVisualizationServer:
                 }
 
             except Exception as e:
-                print(f"Error in upload_dataset: {str(e)}")
+                print("Error processing dataset:", str(e))
                 import traceback
                 print(traceback.format_exc())
-                raise HTTPException(
-                    status_code=500,
-                    detail=f"Error processing dataset: {str(e)}"
-                )
+                raise HTTPException(status_code=500, detail=str(e))
 
         @self.app.get("/get_dataset_element/")
         async def get_dataset_element(split: str, index: int):

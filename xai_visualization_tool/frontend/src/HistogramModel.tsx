@@ -29,6 +29,7 @@ const HistogramModal: FC<HistogramModalProps> = ({data, onClose, layerIndex, neu
 
     useEffect(() => {
         if (!modalRef.current || !data.values?.length) return;
+        console.log("Data values", data.values?.length)
 
         d3.select(modalRef.current).selectAll("*").remove();
 
@@ -41,7 +42,7 @@ const HistogramModal: FC<HistogramModalProps> = ({data, onClose, layerIndex, neu
             .append('g')
             .attr('transform', `translate(${margin.left},${margin.top})`);
 
-        const binCount = Math.ceil(Math.sqrt(data.values.length));
+        const binCount = 100;
 
         // Create histogram generator
         const binGenerator = d3.bin<number, number>()
