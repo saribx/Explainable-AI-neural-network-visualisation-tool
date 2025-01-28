@@ -15,6 +15,7 @@ Features:
 import os
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple
+import traceback
 
 import torch
 import numpy as np
@@ -199,30 +200,14 @@ class NNVisualizationServer:
         )
 
         self.register_routes()
+        self.current_dataset = None
 
     async def analyze_network(self):
-        if not self.model_path or not self.activations_path:
-            raise HTTPException(
-                status_code=404, detail="Model or activation files not found"
-            )
-
         try:
             model = torch.load(self.model_path, map_location=torch.device("cpu"))
-            activations = torch.load(
-                self.activations_path, map_location=torch.device("cpu")
-            )
-            print("\n=== Detailed Activation Structure ===")
-            print(f"Type: {type(activations)}")
-            if isinstance(activations, dict):
-                print("Keys:", activations.keys())
-                print("Activations shape:", [a.shape for a in activations["activations"]])
-                print("Targets shape:", activations["targets"].shape)
-            else:
-                print("First activation shape:", activations[0].shape)
-            print("=======================================\n")
+            activations = torch.load(self.activations_path, map_location=torch.device("cpu"))
 
             # Create activation info string
-            activation_info = ""
             if isinstance(activations, dict):
                 activation_info = f"Dictionary format: {str(activations)[:2000]}"
             elif isinstance(activations, list):
@@ -230,21 +215,17 @@ class NNVisualizationServer:
             elif isinstance(activations, torch.Tensor):
                 activation_info = f"Tensor format: {str(activations.tolist())[:2000]}"
             else:
-                activation_info = (
-                    f"Other format ({type(activations)}): {str(activations)[:2000]}"
-                )
+                activation_info = f"Other format ({type(activations)}): {str(activations)[:2000]}"
 
-            state_dict = (
-                model.get("state_dict", model)
-                if isinstance(model, dict)
-                else model.state_dict()
-            )
+            state_dict = model.get("state_dict", model) if isinstance(model, dict) else model.state_dict()
+            node_node = None  # Initialize node_node at the top level
 
             processed_activations = []
             if isinstance(activations, dict):
-                # If we have a dict with activations and targets
                 act_data = activations["activations"]
-                targets = activations["targets"]
+                targets = activations.get("targets", None)
+                node_node = activations.get("node_node", None)
+
                 processed_activations = [
                     {
                         "values": tensor.tolist() if isinstance(tensor, torch.Tensor) else tensor,
@@ -253,7 +234,6 @@ class NNVisualizationServer:
                     for tensor in act_data
                 ]
             elif isinstance(activations, list):
-                # Old format - just activations without targets
                 processed_activations = [
                     {
                         "values": tensor.tolist() if isinstance(tensor, torch.Tensor) else tensor,
@@ -262,15 +242,76 @@ class NNVisualizationServer:
                     for tensor in activations
                 ]
 
-            # Include activation_info in the returned data
-            visualization_data = self.network_analyzer.process_network_data(
-                state_dict, processed_activations
-            )
+            visualization_data = self.network_analyzer.process_network_data(state_dict, processed_activations)
+
+            # Process node_node if available
+            if node_node is not None:
+                node_node_matrices = [matrix.tolist() if isinstance(matrix, torch.Tensor) else matrix
+                                      for matrix in node_node]
+                if node_node is not None:
+                    print("Node-node structure:", type(node_node))
+                    print("First node-node matrix shape:", node_node[0].shape)
+                    try:
+                        node_node_matrices = []
+                        node_node_min = float('inf')
+                        node_node_max = float('-inf')
+
+                        for i, matrix in enumerate(node_node):
+                            # Ensure the matrix is converted to a list with numeric values
+                            if isinstance(matrix, torch.Tensor):
+                                matrix = matrix.detach().cpu().numpy().tolist()
+
+                            # Recursive function to flatten and convert to floats
+                            def flatten_and_convert(item):
+                                if isinstance(item, list):
+                                    return [flatten_and_convert(subitem) for subitem in item]
+                                return float(item)
+
+                            # Flatten and convert the matrix
+                            converted_matrix = flatten_and_convert(matrix)
+
+                            # Find min and max in flattened list
+                            def find_min_max(lst):
+                                min_val = float('inf')
+                                max_val = float('-inf')
+
+                                def recursive_traverse(item):
+                                    nonlocal min_val, max_val
+                                    if isinstance(item, list):
+                                        for subitem in item:
+                                            recursive_traverse(subitem)
+                                    else:
+                                        min_val = min(min_val, item)
+                                        max_val = max(max_val, item)
+
+                                recursive_traverse(lst)
+                                return min_val, max_val
+
+                            matrix_min, matrix_max = find_min_max(converted_matrix)
+
+                            # Update global min and max
+                            node_node_min = min(node_node_min, matrix_min)
+                            node_node_max = max(node_node_max, matrix_max)
+
+                            # Store the converted matrix
+                            node_node_matrices.append(converted_matrix)
+
+                        print(f"Node-node Min/Max values: {node_node_min}, {node_node_max}")
+                        visualization_data["node_node_matrices"] = node_node_matrices
+                        visualization_data["node_node_range"] = {
+                            "min": float(node_node_min),
+                            "max": float(node_node_max)
+                        }
+                    except Exception as e:
+                        print("Error in node_node processing:", str(e))
+                        print(traceback.format_exc())
+
             visualization_data["activation_info"] = activation_info
 
             return visualization_data
 
         except Exception as e:
+            print("Error details:", traceback.format_exc())
             raise HTTPException(status_code=500, detail=str(e))
 
     def register_routes(self):
@@ -398,7 +439,6 @@ class NNVisualizationServer:
 
             except Exception as e:
                 print("Error retrieving element:", str(e))
-                import traceback
                 print(traceback.format_exc())
                 raise HTTPException(status_code=500, detail=str(e))
 

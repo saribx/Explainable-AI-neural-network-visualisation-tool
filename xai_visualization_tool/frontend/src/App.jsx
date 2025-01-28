@@ -144,8 +144,13 @@ function App() {
                         <div className="code-block">
                             <p>With the simple upload of your trained model and its activations saved as .pt file</p>
                             <p>you can see the activations visually with histograms inside neurons</p>
-                            <p>and the edge colors show connection strength between neurons:</p>
+                            <p>and the edge colors show connection strength between neurons.</p>
+                            <p>You can visualize weights from either:</p>
                             <code>
+                                1. Model weights (default)<br/>
+                                2. Node-to-node connections (if provided in acts.pt)<br/>
+                                <br/>
+                                Color coding:<br/>
                                 <span style={{color: '#ff0000'}}>Red</span>: Strong positive/excitatory connection<br/>
                                 <span style={{color: '#0000ff'}}>Blue</span>: Strong negative/inhibitory connection<br/>
                                 <span style={{color: '#ffffff'}}>White</span>: Weak/no connection<br/>
@@ -230,6 +235,12 @@ function App() {
                                 <div className="code-block">
                                     <h4>Model Structure:</h4>
                                     <pre>{JSON.stringify(visualizationData.model_structure, null, 2)}</pre>
+                                    <h4>Data Availability:</h4>
+                                    <pre>
+                                        {`Activations: ✓ Available
+                                            Targets: ${visualizationData.activations[0].targets ? '✓ Available' : '✗ Not Available'}
+                                            Node-Node Connections: ${visualizationData.node_node_matrices ? '✓ Available' : '✗ Not Available'}`}
+                                    </pre>
                                     <h4>Activation Data Structure:</h4>
                                     <pre>{visualizationData.activation_info}</pre>
                                 </div>
