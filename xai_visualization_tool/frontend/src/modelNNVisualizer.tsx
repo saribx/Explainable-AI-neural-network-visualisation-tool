@@ -574,8 +574,8 @@ const drawControls = (
         // Add weight source selector in top right if node-node connections are available
         if (hasNodeNode) {
             const weightSourceOptions = [
-                {x: width - 250, label: 'Model Weights', type: 'model' as WeightSource},
-                {x: width - 100, label: 'Node Connections', type: 'node_node' as WeightSource}
+                {x: width - 100, label: 'Model Weights', type: 'model' as WeightSource},
+                {x: width + 50, label: 'Node Connections', type: 'node_node' as WeightSource}
             ];
 
             const weightSourceGroup = svg.append('g')
@@ -583,12 +583,12 @@ const drawControls = (
                 .attr('transform', `translate(0, 20)`);
 
             weightSourceGroup.append('text')
-                .attr('x', width - 200)
+                .attr('x', width - 50)
                 .attr('y', 0)
-                .text('Weight Source:')
                 .style('font-size', '12px')
                 .attr('text-anchor', 'middle')
-                .attr('font-weight', 'bold');
+                .attr('font-weight', 'bold')
+                .text('Weight Source:');
 
             weightSourceOptions.forEach(({x, label, type}) => {
                 const isSelected = type === weightSource;
@@ -601,9 +601,9 @@ const drawControls = (
                     });
 
                 sourceGroup.append('rect')
-                    .attr('x', -40)
-                    .attr('y', -15)
-                    .attr('width', 80)
+                    .attr('x', -60)
+                    .attr('y', 0)
+                    .attr('width', 120)
                     .attr('height', 30)
                     .attr('rx', 15)
                     .attr('ry', 15)
@@ -612,7 +612,7 @@ const drawControls = (
 
                 sourceGroup.append('text')
                     .attr('x', 0)
-                    .attr('y', 0)
+                    .attr('y', 15)
                     .attr('text-anchor', 'middle')
                     .attr('dominant-baseline', 'middle')
                     .text(label)
