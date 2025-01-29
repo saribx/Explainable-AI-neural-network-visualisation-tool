@@ -157,7 +157,7 @@ function App() {
                             <p>You can visualize weights from either:</p>
                             <code>
                                 1. Model weights (default)<br/>
-                                2. Node-to-node connections (if provided in acts.pt)<br/>
+                                2. Node-to-node connections (if provided in data.pt)<br/>
                                 <br/>
                                 Color coding:<br/>
                                 <span style={{color: '#ff0000'}}>Red</span>: Strong positive/excitatory connection<br/>
