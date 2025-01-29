@@ -303,17 +303,19 @@ const ModelNetworkVisualizer: React.FC<ModelNetworkVisualizerProps> = ({
             (d: any) => `translate(${d.x}, ${d.y * transform.k})`
           );
 
-        // Update input and hidden layer visualization groups
-        mainGroup
-          .select(".input-pixels")
-          .attr("transform", `scale(1, ${transform.k})`);
+        // Update input layer visualization
+        mainGroup.select('.input-pixels')
+            .selectAll('rect, text')
+            .attr('y', function () {
+                return parseFloat(d3.select(this).attr('data-y')) * transform.k;
+            });
 
-        mainGroup
-          .select(".hidden-pixels")
-          .attr(
-            "transform",
-            `translate(${layerSpacing}, 0) scale(1, ${transform.k})`
-          );
+        // Update hidden layer visualization
+        mainGroup.select('.hidden-pixels')
+            .selectAll('rect, text')
+            .attr('y', function () {
+                return parseFloat(d3.select(this).attr('data-y-h')) * transform.k;
+            });
       });
 
     (svg as any)
@@ -667,6 +669,7 @@ const drawInputVisualizations = (
       .append("rect")
       .attr("x", -40)
       .attr("y", yPos - pixelSize / 2)
+      .attr("data-y", yPos - pixelSize / 6)  // Store original y position
       .attr("width", pixelSize)
       .attr("height", pixelSize)
       .attr("fill", getViridisColor(value))
@@ -677,6 +680,7 @@ const drawInputVisualizations = (
       .append("text")
       .attr("x", -42)
       .attr("y", yPos)
+      .attr("data-y", yPos)  // Store original y position
       .attr("text-anchor", "end")
       .attr("dominant-baseline", "middle")
       .attr("font-size", "8px")
@@ -708,6 +712,7 @@ const drawInputVisualizations = (
       .append("rect")
       .attr("x", -40)
       .attr("y", yPos - pixelSize / 2)
+      .attr("data-y-h", yPos- pixelSize / 6)  // Store original y position
       .attr("width", pixelSize)
       .attr("height", pixelSize)
       .attr("fill", getViridisColor(value))
@@ -718,6 +723,7 @@ const drawInputVisualizations = (
       .append("text")
       .attr("x", -42)
       .attr("y", yPos)
+      .attr("data-y-h", yPos)  // Store original y position
       .attr("text-anchor", "end")
       .attr("dominant-baseline", "middle")
       .attr("font-size", "8px")
