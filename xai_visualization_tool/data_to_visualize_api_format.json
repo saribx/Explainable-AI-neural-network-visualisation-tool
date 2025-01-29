@@ -1,0 +1,23 @@
+{
+    // ========================
+    // Required
+    // ========================
+
+    // List of activations for each layer with shape (N, D)
+    "activations": [torch.Tensor(), ...], 
+
+
+    // Layer definitions, defining how to group activations for visualizations, the list flattened has to match the length of activations
+    "layers": [["input"], ["linear", "relu"], ["linear", "relu", "batchnorm"], ["linear"]]
+
+    // ========================
+    // Optional
+    // ========================
+
+    // List of targets for each layer with shape (N, D)
+    "targets": torch.Tensor(), 
+
+    // Node-Node Values, instead of visualizing the weights, arbitrary values can be visualized between nodes
+    // each Tensor needs to match the shape of the weights of the corresponding layer
+    "node_node_values": [torch.Tensor(), ...]
+}

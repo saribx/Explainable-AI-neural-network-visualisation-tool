@@ -48,6 +48,7 @@ body {
     min-width: 320px;
     min-height: 100vh;
     -webkit-font-smoothing: antialiased;
+    margin-bottom: 600px;
 }
 
 /*******************
@@ -104,6 +105,23 @@ nav ul li a:hover {
     color: var(--primary);
 }
 
+label {
+    display: block;
+    font-size: 0.9rem;
+    font-weight: 500;
+    margin-bottom: 0.5rem;
+}
+
+select {
+    padding: 0.5rem 1rem;
+    border-radius: var(--radius-md);
+    border: 1px solid var(--gray-200);
+    font-size: 0.9rem;
+    color: var(--gray-600);
+    background: white;
+    transition: var(--transition-base);
+}
+
 /*******************
  * Code Blocks    *
  *******************/
@@ -112,7 +130,7 @@ nav ul li a:hover {
     padding: 1.5rem;
     border-radius: var(--radius-lg);
     margin: 2rem auto;
-    max-width: 800px;
+    max-width: 1000px;
     overflow-x: auto;
     color: #d4d4d4;
     font-family: var(--font-mono);
@@ -212,6 +230,30 @@ nav ul li a:hover {
     color: var(--gray-500);
     font-size: 0.9rem;
 }
+
+/*******************
+ * Settings *
+ *******************/
+
+.settings {
+    width: 100%;
+    max-width: 300px;
+    margin: 1rem auto;
+}
+
+.settings-panel {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    width: 100%;
+    padding: 1rem;
+    margin-bottom: 1rem;
+}
+
+.settings-layer {
+    margin-left: 1rem;
+}
+
 
 /*******************
  * Dataset Preview *
@@ -380,6 +422,22 @@ nav ul li a:hover {
     position: relative;
     box-shadow: var(--shadow-md);
 }
+
+/*******************
+ * Error     *
+ *******************/
+
+.error-message {
+    color: white;
+    background: var(--error);
+    padding: 0.5rem 1rem;
+    border-radius: var(--radius-md);
+    width: 60%;
+    font-size: 0.9rem;
+    font-weight: 500;
+    margin: 0.5rem auto;
+}
+
 
 /*******************
  * Responsive     *

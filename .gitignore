@@ -9,3 +9,8 @@
 /venvxainn
 /.idea
 *.iml
+*.pyc
+venv
+__pycache__
+.vscode
+foo.ipynb
