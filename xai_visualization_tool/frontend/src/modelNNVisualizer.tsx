@@ -93,6 +93,24 @@ interface SettingsProps {
   modelStructure: LayerStructure[];
 }
 
+interface VisualizationData {
+  model_structure: LayerStructure[];
+  activations: {
+    values: number[][];
+    targets?: number[];
+  }[];
+  weight_matrices: number[][][];
+  node_node_matrices?: number[][][];
+  weight_range: {
+    min: number;
+    max: number;
+  };
+  node_node_range?: {
+    min: number;
+    max: number;
+  };
+}
+
 // ============= Utility Functions =============
 
 /**
@@ -187,6 +205,8 @@ const Settings: React.FC<SettingsProps> = ({
 /**
  * Main Network Visualizer Component
  */
+type WeightSource = "model" | "node_node";
+
 const ModelNetworkVisualizer: React.FC<ModelNetworkVisualizerProps> = ({
   visualizationData,
   firstLayerData,
@@ -201,6 +221,7 @@ const ModelNetworkVisualizer: React.FC<ModelNetworkVisualizerProps> = ({
     showPositive: false,
     showNegative: false,
   });
+  const [weightSource, setWeightSource] = useState<WeightSource>("model");
 
   useEffect(() => {
     if (visualizationData && !settings.layers.to_visualize) {
@@ -219,7 +240,8 @@ const ModelNetworkVisualizer: React.FC<ModelNetworkVisualizerProps> = ({
   useEffect(() => {
     if (!visualizationData || !containerRef.current) return;
 
-    const { model_structure, weight_matrices } = visualizationData;
+    const { model_structure, node_node_matrices, weight_matrices } =
+      visualizationData;
 
     // Clear previous visualization
     d3.select(containerRef.current).selectAll("*").remove();
@@ -298,22 +320,31 @@ const ModelNetworkVisualizer: React.FC<ModelNetworkVisualizerProps> = ({
       .call(zoom)
       .call(zoom.transform, d3.zoomIdentity.translate(margin.left, margin.top));
 
-    // Create color scale for weights
-    const weightColorScale = d3
-      .scaleSequential(d3.interpolateRdBu)
-      .domain([
-        visualizationData.weight_range.max,
-        visualizationData.weight_range.min,
-      ]);
-
     // Draw network structure
+    // Use either model weights or node-node weights based on selection
+    const connectionsData =
+      weightSource === "model"
+        ? weight_matrices
+        : node_node_matrices || weight_matrices;
+
+    const weightRange =
+      weightSource === "model"
+        ? visualizationData.weight_range
+        : visualizationData.node_node_range || visualizationData.weight_range;
+
     const connections = createConnections(
       model_structure,
-      weight_matrices,
+      connectionsData,
       layerSpacing,
       height,
       neuronSpacingFactor
     );
+
+    // Update color scale based on selected weight source
+    const weightColorScale = d3
+      .scaleSequential(d3.interpolateRdBu)
+      .domain([weightRange.max, weightRange.min]);
+
     drawConnections(mainGroup, connections, weightColorScale, connectionFilter);
     drawNeurons(
       mainGroup,
@@ -327,7 +358,6 @@ const ModelNetworkVisualizer: React.FC<ModelNetworkVisualizerProps> = ({
       settings
     );
 
-    // Draw controls and legends
     if (firstLayerData) {
       drawInputVisualizations(
         mainGroup,
@@ -338,14 +368,24 @@ const ModelNetworkVisualizer: React.FC<ModelNetworkVisualizerProps> = ({
         neuronSpacingFactor
       );
     }
+
     drawControls(
       svg,
       width,
       weightColorScale,
       connectionFilter,
-      setConnectionFilter
+      setConnectionFilter,
+      weightSource,
+      setWeightSource,
+      !!node_node_matrices
     );
-  }, [visualizationData, firstLayerData, connectionFilter, settings.layers]);
+  }, [
+    visualizationData,
+    firstLayerData,
+    connectionFilter,
+    weightSource,
+    settings,
+  ]);
 
   return (
     <div className="model-network-visualization">
@@ -383,6 +423,9 @@ const createConnections = (
 ): ConnectionData[] => {
   const connections: ConnectionData[] = [];
 
+  // Log the input weight matrices for debugging
+  console.log("Creating connections with matrices:", weight_matrices);
+
   model_structure.forEach((layer, layerIndex) => {
     if (layerIndex < model_structure.length - 1) {
       const nextLayer = model_structure[layerIndex + 1];
@@ -392,14 +435,41 @@ const createConnections = (
         (height / Math.max(nextLayer.neurons + 1, 2)) * neuronSpacingFactor;
       const weightMatrix = weight_matrices[layerIndex] || [];
 
+      // Log the current weight matrix for this layer
+      console.log(`Layer ${layerIndex} Weight Matrix:`, weightMatrix);
+
       for (let i = 0; i < layer.neurons; i++) {
         for (let j = 0; j < nextLayer.neurons; j++) {
+          // More robust weight extraction with extensive logging
+          const rawWeight = weightMatrix[j]?.[i];
+
+          // Extensive logging of weight extraction
+          console.log(
+            `Extracting weight for source neuron ${i}, target neuron ${j}:`,
+            {
+              rawWeight,
+              type: typeof rawWeight,
+            }
+          );
+
+          const weight = (() => {
+            if (typeof rawWeight === "number") return rawWeight;
+            if (typeof rawWeight === "string") {
+              const parsed = parseFloat(rawWeight);
+              return isNaN(parsed) ? 0 : parsed;
+            }
+            return 0;
+          })();
+
+          // Log the processed weight
+          console.log(`Processed weight: ${weight}`);
+
           connections.push({
             x1: layerIndex * layerSpacing,
             y1: (i + 0.5) * (currentY / neuronSpacingFactor),
             x2: (layerIndex + 1) * layerSpacing,
             y2: (j + 0.5) * (nextY / neuronSpacingFactor),
-            weight: weightMatrix[j]?.[i] || 0,
+            weight,
             sourceNeuron: i,
             targetNeuron: j,
           });
@@ -407,7 +477,7 @@ const createConnections = (
       }
     }
   });
-
+  console.log("Total connections created:", connections.length);
   return connections;
 };
 
@@ -660,115 +730,192 @@ const drawControls = (
   svg: D3Selection,
   width: number,
   colorScale: d3.ScaleSequential<string>,
-  filter: { showAll: boolean; showPositive: boolean; showNegative: boolean },
-  setFilter: (filter: {
-    showAll: boolean;
-    showPositive: boolean;
-    showNegative: boolean;
-  }) => void
+  filter: ConnectionFilter,
+  setFilter: (filter: ConnectionFilter) => void,
+  weightSource: WeightSource,
+  setWeightSource: (source: WeightSource) => void,
+  hasNodeNode: boolean
 ) => {
-  const legendWidth = 800;
-  const legendHeight = 20;
-  const legendX = (width - legendWidth) / 2;
+  try {
+    const legendWidth = 800;
+    const legendHeight = 20;
+    const legendX = (width - legendWidth) / 2;
 
-  // Create color gradient
-  const defs = svg.append("defs");
-  const gradient = defs
-    .append("linearGradient")
-    .attr("id", "weight-gradient")
-    .attr("x1", "0%")
-    .attr("x2", "100%");
+    // Create color gradient
+    const defs = svg.append("defs");
+    const gradient = defs
+      .append("linearGradient")
+      .attr("id", "weight-gradient")
+      .attr("x1", "0%")
+      .attr("x2", "100%");
 
-  gradient
-    .selectAll("stop")
-    .data(d3.range(-1, 1.1, 0.1))
-    .enter()
-    .append("stop")
-    .attr("offset", (d) => (d + 1) * 50 + "%")
-    .attr("stop-color", (d) => colorScale(d));
+    gradient
+      .selectAll("stop")
+      .data(d3.range(-1, 1.1, 0.1))
+      .enter()
+      .append("stop")
+      .attr("offset", (d) => (d + 1) * 50 + "%")
+      .attr("stop-color", (d) => colorScale(d));
 
-  // Create controls group
-  const controls = svg
-    .append("g")
-    .attr("class", "filter-controls")
-    .attr("transform", `translate(${legendX}, 50)`);
+    // Add weight source selector in top right if node-node connections are available
+    if (hasNodeNode) {
+      const weightSourceOptions = [
+        {
+          x: width - 100,
+          label: "Model Weights",
+          type: "model" as WeightSource,
+        },
+        {
+          x: width + 50,
+          label: "Node Connections",
+          type: "node_node" as WeightSource,
+        },
+      ];
 
-  controls
-    .append("text")
-    .attr("x", 0)
-    .attr("y", 0)
-    .text("Show connections:")
-    .style("font-size", "12px");
+      const weightSourceGroup = svg
+        .append("g")
+        .attr("class", "weight-source-selector")
+        .attr("transform", `translate(0, 20)`);
 
-  const totalWidth = 400;
-  const startX = (legendWidth - totalWidth) / 2;
+      weightSourceGroup
+        .append("text")
+        .attr("x", width - 50)
+        .attr("y", 0)
+        .style("font-size", "12px")
+        .attr("text-anchor", "middle")
+        .attr("font-weight", "bold")
+        .text("Weight Source:");
 
-  // Create filter options
-  const options = [
-    { x: startX, label: "All", type: "showAll" },
-    { x: startX + 140, label: "Strong Positive", type: "showPositive" },
-    { x: startX + 300, label: "Strong Negative", type: "showNegative" },
-  ] as const;
+      weightSourceOptions.forEach(({ x, label, type }) => {
+        const isSelected = type === weightSource;
 
-  options.forEach(({ x, label, type }) => {
-    const checked = filter[type];
-    controls
+        const sourceGroup = weightSourceGroup
+          .append("g")
+          .attr("transform", `translate(${x}, 10)`)
+          .style("cursor", "pointer")
+          .on("click", () => {
+            setWeightSource(type as WeightSource);
+          });
+
+        sourceGroup
+          .append("rect")
+          .attr("x", -60)
+          .attr("y", 0)
+          .attr("width", 120)
+          .attr("height", 30)
+          .attr("rx", 15)
+          .attr("ry", 15)
+          .attr("fill", isSelected ? "#2563eb" : "#e0e0e0")
+          .attr("opacity", 0.8);
+
+        sourceGroup
+          .append("text")
+          .attr("x", 0)
+          .attr("y", 15)
+          .attr("text-anchor", "middle")
+          .attr("dominant-baseline", "middle")
+          .text(label)
+          .attr("fill", isSelected ? "white" : "#666")
+          .attr("font-weight", "bold")
+          .style("font-size", "12px");
+      });
+    }
+
+    // Create controls group
+    const controls = svg
       .append("g")
-      .attr("transform", `translate(${x}, -5)`)
-      .style("cursor", "pointer")
-      .on("click", () => {
-        const newFilter = {
-          showAll: false,
-          showPositive: false,
-          showNegative: false,
-          [type]: true,
-        };
-        setFilter(newFilter);
-      })
+      .attr("class", "filter-controls")
+      .attr("transform", `translate(${legendX}, 50)`);
+
+    // Rest of the original controls remain exactly the same
+    controls
       .append("text")
-      .attr("class", "filter-option")
-      .attr("data-type", type)
-      .attr("x", 20)
-      .attr("y", 10)
-      .text(label)
-      .attr("fill", checked ? "#2563eb" : "#666")
-      .attr("font-weight", "bold")
-      .style("font-size", "14px")
-      .style("letter-spacing", "0.5px");
-  });
+      .attr("x", 0)
+      .attr("y", 0)
+      .text("Show connections:")
+      .style("font-size", "12px");
 
-  // Create legend
-  const legend = svg
-    .append("g")
-    .attr("class", "legend")
-    .attr("transform", `translate(${legendX},100)`);
+    const totalWidth = 400;
+    const startX = (legendWidth - totalWidth) / 2;
 
-  legend
-    .append("rect")
-    .attr("width", legendWidth)
-    .attr("height", legendHeight)
-    .style("fill", "url(#weight-gradient)");
+    // Create filter options
+    const options = [
+      { x: startX, label: "All", type: "showAll" },
+      { x: startX + 140, label: "Strong Positive", type: "showPositive" },
+      { x: startX + 300, label: "Strong Negative", type: "showNegative" },
+    ] as const;
 
-  const legendScale = d3
-    .scaleLinear()
-    .domain([colorScale.domain()[1], colorScale.domain()[0]])
-    .range([0, legendWidth]);
+    options.forEach(({ x, label, type }) => {
+      const checked = filter[type];
+      controls
+        .append("g")
+        .attr("transform", `translate(${x}, -5)`)
+        .style("cursor", "pointer")
+        .on("click", () => {
+          const newFilter = {
+            showAll: false,
+            showPositive: false,
+            showNegative: false,
+            [type]: true,
+          };
+          setFilter(newFilter);
+        })
+        .append("text")
+        .attr("class", "filter-option")
+        .attr("data-type", type)
+        .attr("x", 20)
+        .attr("y", 10)
+        .text(label)
+        .attr("fill", checked ? "#2563eb" : "#666")
+        .attr("font-weight", "bold")
+        .style("font-size", "14px")
+        .style("letter-spacing", "0.5px");
+    });
 
-  const legendAxis = d3
-    .axisBottom(legendScale)
-    .ticks(5)
-    .tickFormat(d3.format(".1f"));
+    // Create legend
+    const legend = svg
+      .append("g")
+      .attr("class", "legend")
+      .attr("transform", `translate(${legendX},100)`);
 
-  legend
-    .append("g")
-    .attr("transform", `translate(0,${legendHeight})`)
-    .call(legendAxis)
-    .append("text")
-    .attr("x", legendWidth / 2)
-    .attr("y", 30)
-    .attr("fill", "black")
-    .attr("text-anchor", "middle")
-    .text("Connection Weights");
+    legend
+      .append("rect")
+      .attr("width", legendWidth)
+      .attr("height", legendHeight)
+      .style("fill", "url(#weight-gradient)");
+
+    const legendScale = d3
+      .scaleLinear()
+      .domain([colorScale.domain()[1], colorScale.domain()[0]])
+      .range([0, legendWidth]);
+
+    const legendAxis = d3
+      .axisBottom(legendScale)
+      .ticks(5)
+      .tickFormat(d3.format(".1f"));
+
+    legend
+      .append("g")
+      .attr("transform", `translate(0,${legendHeight})`)
+      .call(legendAxis)
+      .append("text")
+      .attr("x", legendWidth / 2)
+      .attr("y", 30)
+      .attr("fill", "black")
+      .attr("text-anchor", "middle")
+      .text(
+        `${weightSource === "model" ? "Model" : "Node-Node"} Connection Weights`
+      );
+  } catch (error) {
+    console.error("Error in drawControls:", error);
+    svg
+      .append("text")
+      .attr("x", width / 2)
+      .attr("y", 100)
+      .attr("text-anchor", "middle")
+      .attr("fill", "red")
+      .text("Error rendering controls");
+  }
 };
 
 export default ModelNetworkVisualizer;

@@ -151,21 +151,41 @@ function App() {
                         <h3>Upload your trained model and its activations to visualize your neural network</h3>
 
                         <div className="code-block">
-                            <p>With the simple upload of your trained model and its activations saved as .pt file</p>
+                            <p>With the simple upload of your trained model and additional data to visualize saved as .pt file</p>
                             <p>you can see the activations visually with histograms inside neurons</p>
-                            <p>and the edge colors show connection strength between neurons:</p>
+                            <p>and the edge colors show connection strength between neurons.</p>
+                            <p>You can visualize weights from either:</p>
                             <code>
+                                1. Model weights (default)<br/>
+                                2. Node-to-node connections (if provided in acts.pt)<br/>
+                                <br/>
+                                Color coding:<br/>
                                 <span style={{color: '#ff0000'}}>Red</span>: Strong positive/excitatory connection<br/>
                                 <span style={{color: '#0000ff'}}>Blue</span>: Strong negative/inhibitory connection<br/>
                                 <span style={{color: '#ffffff'}}>White</span>: Weak/no connection<br/>
                             </code>
                             <p></p>
-                            <p>To generate the activations you can use the following code:</p>
+                            <p>The model and data is expected in the following format</p>
                             <code>
-                                <span className="keyword">acts</span> = <span
-                                className="function">collect_activation</span>(model_linear_correlated_data,
-                                model_linear_correlated_data_dict[&quot;x_train&quot;])<br/>
-                                <span className="function">torch.save</span>(acts, &apos;activations.pt&apos;)
+                                import torch<br/>
+
+                                <span className='comment'> # Save Model </span><br/>
+                                torch.<span className='function'>save</span>(model, &apos;model.pt&apos;)<br/><br/>
+
+                                <span className='comment'> # Save additional data to visualize </span><br/>
+                                data_dict = &#123;<br/>
+                                &nbsp;&nbsp;&nbsp;&nbsp;<span className='comment'> # Activations for all layers including input, (NxD) </span><br/>
+                                &nbsp;&nbsp;&nbsp;&nbsp;&apos;activations&apos;: [torch.Tensor(), ...],<br/>
+                                &nbsp;&nbsp;&nbsp;&nbsp;<span className='comment'> # Definition how to group activations. Every entry is visualized as a separate layer. </span><br/>
+                                &nbsp;&nbsp;&nbsp;&nbsp;&apos;layers&apos;: [["input"], ["linear", "relu"], ["linear"]],<br/>
+                                &nbsp;&nbsp;&nbsp;&nbsp;<span className='comment'> # Targets for all samples used to split histograms </span><br/>
+                                &nbsp;&nbsp;&nbsp;&nbsp;&apos;targets&apos;: torch.Tensor(),<br/>
+                                &nbsp;&nbsp;&nbsp;&nbsp;<span className='comment'> # Values to visualize as edges between nodes. Has to match the amount and shape of weight matrices. </span><br/>
+                                &nbsp;&nbsp;&nbsp;&nbsp;&apos;node_node&apos;: [torch.Tensor(), ...],<br/>
+
+                                
+                                &#125;<br/>
+                                torch.<span className='function'>save</span>(data_dict, &apos;data.pt&apos;)
                             </code>
                         </div>
 
@@ -239,6 +259,12 @@ function App() {
                                 <div className="code-block">
                                     <h4>Model Structure:</h4>
                                     <pre>{JSON.stringify(visualizationData.model_structure, null, 2)}</pre>
+                                    <h4>Data Availability:</h4>
+                                    <pre>
+                                        {`Activations: ✓ Available
+                                            Targets: ${visualizationData.activations[0].targets ? '✓ Available' : '✗ Not Available'}
+                                            Node-Node Connections: ${visualizationData.node_node_matrices ? '✓ Available' : '✗ Not Available'}`}
+                                    </pre>
                                     <h4>Activation Data Structure:</h4>
                                     <pre>{visualizationData.activation_info}</pre>
                                 </div>

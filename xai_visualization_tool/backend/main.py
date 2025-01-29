@@ -15,6 +15,7 @@ Features:
 import os
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple
+import traceback
 
 import pprint
 import torch
@@ -188,6 +189,73 @@ class NetworkAnalyzer:
             weight_min = min(weight_min, matrix_min)
             weight_max = max(weight_max, matrix_max)
 
+        # Process node_node if available
+
+        node_node = data_to_visualize.get("node_node", None)
+        node_node_entries = {}
+        if node_node is not None:
+            node_node_matrices = [
+                matrix.tolist() if isinstance(matrix, torch.Tensor) else matrix
+                for matrix in node_node
+            ]
+
+            print("Node-node structure:", type(node_node))
+            print("First node-node matrix shape:", node_node[0].shape)
+            try:
+                node_node_matrices = []
+                node_node_min = float("inf")
+                node_node_max = float("-inf")
+
+                for i, matrix in enumerate(node_node):
+                    # Ensure the matrix is converted to a list with numeric values
+                    if isinstance(matrix, torch.Tensor):
+                        matrix = matrix.detach().cpu().numpy().tolist()
+
+                    # Recursive function to flatten and convert to floats
+                    def flatten_and_convert(item):
+                        if isinstance(item, list):
+                            return [flatten_and_convert(subitem) for subitem in item]
+                        return float(item)
+
+                    # Flatten and convert the matrix
+                    converted_matrix = flatten_and_convert(matrix)
+
+                    # Find min and max in flattened list
+                    def find_min_max(lst):
+                        min_val = float("inf")
+                        max_val = float("-inf")
+
+                        def recursive_traverse(item):
+                            nonlocal min_val, max_val
+                            if isinstance(item, list):
+                                for subitem in item:
+                                    recursive_traverse(subitem)
+                            else:
+                                min_val = min(min_val, item)
+                                max_val = max(max_val, item)
+
+                        recursive_traverse(lst)
+                        return min_val, max_val
+
+                    matrix_min, matrix_max = find_min_max(converted_matrix)
+
+                    # Update global min and max
+                    node_node_min = min(node_node_min, matrix_min)
+                    node_node_max = max(node_node_max, matrix_max)
+
+                    # Store the converted matrix
+                    node_node_matrices.append(converted_matrix)
+
+                print(f"Node-node Min/Max values: {node_node_min}, {node_node_max}")
+                node_node_entries["node_node_matrices"] = node_node_matrices
+                node_node_entries["node_node_range"] = {
+                    "min": float(node_node_min),
+                    "max": float(node_node_max),
+                }
+            except Exception as e:
+                print("Error in node_node processing:", str(e))
+                print(traceback.format_exc())
+
         return {
             "model_structure": layers,
             "activations": processed_activations,
@@ -197,6 +265,7 @@ class NetworkAnalyzer:
                 "max": float(weight_max),
             },
             "activation_info": activation_info,
+            **node_node_entries,
         }
 
     @staticmethod
@@ -314,13 +383,9 @@ class NNVisualizationServer:
         )
 
         self.register_routes()
+        self.current_dataset = None
 
     async def analyze_network(self):
-        if not self.model_path or not self.activations_path:
-            raise HTTPException(
-                status_code=404, detail="Model or activation files not found"
-            )
-
         try:
             model = torch.load(
                 self.model_path, map_location=torch.device("cpu"), weights_only=True
@@ -348,7 +413,6 @@ class NNVisualizationServer:
                 if isinstance(model, dict)
                 else model.state_dict()
             )
-
             self.network_analyzer.assert_valid_input(state_dict, data_to_visualize)
 
             # Include activation_info in the returned data
@@ -359,6 +423,7 @@ class NNVisualizationServer:
             return visualization_data
 
         except Exception as e:
+            print("Error details:", traceback.format_exc())
             raise HTTPException(status_code=500, detail=str(e))
 
     def register_routes(self):
@@ -490,8 +555,6 @@ class NNVisualizationServer:
 
             except Exception as e:
                 print("Error retrieving element:", str(e))
-                import traceback
-
                 print(traceback.format_exc())
                 raise HTTPException(status_code=500, detail=str(e))
 
