@@ -774,6 +774,7 @@ const drawInputVisualizations = (
 
     for (let i = 0; i < firstHiddenNeurons; i++) {
         const yPos = (i + 0.5) * (hiddenPixelSpacing / neuronSpacingFactor);
+        const yPos_pixel = (i + 0.5) * (hiddenPixelSpacing / neuronSpacingFactor) - 3;
 
         // Get weights for this neuron
         const neuronWeights = firstLayerWeights[i] || [];
@@ -782,8 +783,8 @@ const drawInputVisualizations = (
         const neuronGroup = hiddenGroup
             .append("g")
             .attr("class", "neuron-matrix-group")
-            .attr("data-base-y", yPos - miniGridWidth / 2)
-            .attr("transform", `translate(-40, ${yPos - miniGridWidth / 2})`)
+            .attr("data-base-y", yPos_pixel)
+            .attr("transform", `translate(-40, ${yPos_pixel - miniGridWidth / 2})`)
             .style("cursor", "pointer")
             .on("click", (event: MouseEvent) => {
                 event.stopPropagation();
@@ -799,9 +800,9 @@ const drawInputVisualizations = (
                 const rectGroup = neuronGroup
                     .append("g")
                     .attr("class", "matrix-cell")
-                    .attr("data-base-x", col * miniPixelSize)
-                    .attr("data-base-y", row * miniPixelSize)
-                    .attr("transform", `translate(${col * miniPixelSize}, ${row * miniPixelSize})`);
+                    .attr("data-base-x", col * miniPixelSize - 20)
+                    .attr("data-base-y", row * miniPixelSize - 10 )
+                    .attr("transform", `translate(${col * miniPixelSize - 20}, ${row * miniPixelSize})`);
 
                 rectGroup
                     .append("rect")
@@ -816,7 +817,7 @@ const drawInputVisualizations = (
         // Add neuron value text
         hiddenGroup
             .append("text")
-            .attr("x", -42)
+            .attr("x", -62)
             .attr("y", yPos)
             .attr("data-y-h", yPos)
             .attr("text-anchor", "end")
