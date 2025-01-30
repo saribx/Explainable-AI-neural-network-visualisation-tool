@@ -110,7 +110,7 @@ function App() {
                 setIsModelFileUploaded(true);
                 setIsActFileUploaded(true);
                 setFile({name: 'linear_correlated_model.pt'});
-                setAFile({name: 'acts_linear_correlated_model.pt'});
+                setAFile({name: 'acts_linear_correlated_model_with_targets_node_node_with_name_and_input.pt'});
                 setError(null);
                 setUploadSuccess({model: true, act: true});
             }
@@ -151,7 +151,8 @@ function App() {
                         <h3>Upload your trained model and its activations to visualize your neural network</h3>
 
                         <div className="code-block">
-                            <p>With the simple upload of your trained model and additional data to visualize saved as .pt file</p>
+                            <p>With the simple upload of your trained model and additional data to visualize saved as
+                                .pt file</p>
                             <p>you can see the activations visually with histograms inside neurons</p>
                             <p>and the edge colors show connection strength between neurons.</p>
                             <p>You can visualize weights from either:</p>
@@ -183,7 +184,7 @@ function App() {
                                 &nbsp;&nbsp;&nbsp;&nbsp;<span className='comment'> # Values to visualize as edges between nodes. Has to match the amount and shape of weight matrices. </span><br/>
                                 &nbsp;&nbsp;&nbsp;&nbsp;&apos;node_node&apos;: [torch.Tensor(), ...],<br/>
 
-                                
+
                                 &#125;<br/>
                                 torch.<span className='function'>save</span>(data_dict, &apos;data.pt&apos;)
                             </code>
@@ -235,7 +236,7 @@ function App() {
                                 <polyline points="7 10 12 15 17 10"/>
                                 <line x1="12" y1="15" x2="12" y2="3"/>
                             </svg>
-                            Data to visualize
+                            Upload Data to visualize
                             {uploadSuccess.act && (
                                 <svg className="success-check" viewBox="0 0 24 24" fill="none" stroke="currentColor"
                                      strokeWidth="2">
