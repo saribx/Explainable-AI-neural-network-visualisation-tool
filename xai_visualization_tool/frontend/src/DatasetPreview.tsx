@@ -41,19 +41,20 @@ const DatasetPreview: React.FC<DatasetPreviewProps> = ({className, onDatasetLoad
     const [selectedSplit, setSelectedSplit] = React.useState<'train' | 'test' | 'val'>('train');
     const [selectedIndex, setSelectedIndex] = React.useState<number>(0);
 
-    // Maps numeric values to RGB colors using viridis-like color scheme
+    // Maps numeric values to RGB colors using warm-cold color scheme
     const getColor = React.useCallback((value: number): string => {
-        const v = Math.max(0, Math.min(1, value));
+        // Normalisiere zu [-1,1] und dann zu [0,1]
+        const normalized = (Math.max(-1, Math.min(1, value * 1.5)) + 1) / 2;
+
         const colors: ColorMatrix = [
-            [68, 1, 84],
-            [70, 50, 127],
-            [59, 82, 139],
-            [33, 144, 141],
-            [93, 201, 99],
-            [253, 231, 37]
+            [65, 105, 175],    // Gedämpftes Blau (stark negativ)
+            [130, 150, 200],   // Helles Blau (leicht negativ)
+            [178, 178, 182],   // Fast Grau (null) - leicht bläulich/rötlich
+            [200, 140, 140],   // Helles Rot (leicht positiv)
+            [175, 95, 95]      // Gedämpftes Rot (stark positiv)
         ];
 
-        const [r, g, b] = calculateColorTransition(v, colors);
+        const [r, g, b] = calculateColorTransition(normalized, colors);
         return `rgb(${r}, ${g}, ${b})`;
     }, []);
 

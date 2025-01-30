@@ -94,7 +94,7 @@ const MatrixModal: React.FC<MatrixModalProps> = ({data, onClose, neuronIndex}) =
                                 style={{
                                     width: cellSize,
                                     height: cellSize,
-                                    backgroundColor: getViridisColor(value),
+                                    backgroundColor: getWarmColdColor(value),
                                     display: 'flex',
                                     alignItems: 'center',
                                     justifyContent: 'center',
@@ -105,6 +105,7 @@ const MatrixModal: React.FC<MatrixModalProps> = ({data, onClose, neuronIndex}) =
                                 {value.toFixed(2)}
                             </div>
                         );
+                        v
                     })}
                 </div>
             </div>
@@ -163,20 +164,22 @@ interface VisualizationData {
 /**
  * Maps a value to a color using a viridis-like color scheme
  */
-const getViridisColor = (value: number): string => {
+// Warm-cold color mapping function
+const getWarmColdColor = (value) => {
+    // Normalisiere zu [-1,1] und dann zu [0,1]
+    const normalized = (Math.max(-1, Math.min(1, value * 1.5)) + 1) / 2;
+
     const colors = [
-        [68, 1, 84], // Dark purple
-        [70, 50, 127], // Purple
-        [59, 82, 139], // Blue
-        [33, 144, 141], // Teal
-        [93, 201, 99], // Green
-        [253, 231, 37], // Yellow
+        [65, 105, 175],    // Gedämpftes Blau (stark negativ)
+        [130, 150, 200],   // Helles Blau (leicht negativ)
+        [178, 178, 182],   // Fast Grau (null) - leicht bläulich/rötlich
+        [200, 140, 140],   // Helles Rot (leicht positiv)
+        [175, 95, 95]      // Gedämpftes Rot (stark positiv)
     ];
 
-    const v = Math.max(0, Math.min(1, value));
     const numSegments = colors.length - 1;
-    const segment = Math.min(Math.floor(v * numSegments), numSegments - 1);
-    const segmentT = v * numSegments - segment;
+    const segment = Math.min(Math.floor(normalized * numSegments), numSegments - 1);
+    const segmentT = (normalized * numSegments) - segment;
 
     const c1 = colors[segment];
     const c2 = colors[segment + 1];
@@ -333,6 +336,10 @@ const ModelNetworkVisualizer: React.FC<ModelNetworkVisualizerProps> = ({
                 `translate(${margin.left},${margin.top})`
             ) as unknown as D3Selection;
 
+        const connectionsData = weightSource === "model"
+            ? weight_matrices
+            : node_node_matrices || weight_matrices;
+
         // Setup zoom behavior
         const zoom = d3
             .zoom<Element, unknown>()
@@ -390,11 +397,6 @@ const ModelNetworkVisualizer: React.FC<ModelNetworkVisualizerProps> = ({
             .call(zoom.transform, d3.zoomIdentity.translate(margin.left, margin.top));
 
         // Draw network structure
-        // Use either model weights or node-node weights based on selection
-        const connectionsData =
-            weightSource === "model"
-                ? weight_matrices
-                : node_node_matrices || weight_matrices;
 
         const weightRange =
             weightSource === "model"
@@ -431,11 +433,12 @@ const ModelNetworkVisualizer: React.FC<ModelNetworkVisualizerProps> = ({
             drawInputVisualizations(
                 mainGroup,
                 firstLayerData,
+                connectionsData,  // Pass the weight matrices
                 height,
                 model_structure,
                 layerSpacing,
                 neuronSpacingFactor,
-                showMatrixModal  // NEU
+                showMatrixModal
             );
         }
 
@@ -708,11 +711,12 @@ const drawNeuronHistogram = (
 const drawInputVisualizations = (
     group: D3Selection,
     data: number[],
+    weightMatrices: number[][][],
     height: number,
     modelStructure: LayerStructure[],
     layerSpacing: number,
     neuronSpacingFactor: number,
-    showMatrixModal: (neuronIndex: number, data: number[]) => void  // NEU
+    showMatrixModal: (neuronIndex: number, data: number[]) => void
 ) => {
     // Draw input layer visualization (keep original vertical layout)
     const pixelSize = 15;
@@ -720,23 +724,15 @@ const drawInputVisualizations = (
     const inputNeurons = modelStructure[0].neurons;
     const firstHiddenNeurons = modelStructure[1].neurons;
 
-    // Original input layer spacing
-    const inputPixelSpacing =
-        (height / Math.max(inputNeurons + 1, 2)) * neuronSpacingFactor;
-
-    // First hidden layer spacing
-    const hiddenPixelSpacing =
-        (height / Math.max(firstHiddenNeurons + 1, 2)) * neuronSpacingFactor;
+    // Calculate spacings
+    const inputPixelSpacing = (height / Math.max(inputNeurons + 1, 2)) * neuronSpacingFactor;
+    const hiddenPixelSpacing = (height / Math.max(firstHiddenNeurons + 1, 2)) * neuronSpacingFactor;
 
     // Create visualization groups
-    const visualizationGroup = group
-        .append("g")
-        .attr("class", "input-visualizations");
+    const visualizationGroup = group.append("g").attr("class", "input-visualizations");
 
     // Draw input layer pixels vertically (unchanged)
-    const inputGroup = visualizationGroup
-        .append("g")
-        .attr("class", "input-pixels");
+    const inputGroup = visualizationGroup.append("g").attr("class", "input-pixels");
 
     data.forEach((value, i) => {
         const yPos = (i + 0.5) * (inputPixelSpacing / neuronSpacingFactor);
@@ -748,7 +744,7 @@ const drawInputVisualizations = (
             .attr("data-y", yPos - pixelSize / 6)
             .attr("width", pixelSize)
             .attr("height", pixelSize)
-            .attr("fill", getViridisColor(value))
+            .attr("fill", getWarmColdColor(value))
             .append("title")
             .text(value.toFixed(2));
 
@@ -764,36 +760,41 @@ const drawInputVisualizations = (
             .text(value.toFixed(2));
     });
 
-    // Draw first hidden layer with 8x8 matrices
+    // Draw first hidden layer with weight matrices
     const hiddenGroup = visualizationGroup
         .append("g")
         .attr("class", "hidden-pixels")
         .attr("transform", `translate(${layerSpacing}, 0)`);
 
     const miniGridSize = 8;
-    const miniPixelSize = 4; // Smaller size for the 8x8 matrices
+    const miniPixelSize = 4;
     const miniGridWidth = miniGridSize * miniPixelSize;
+// Get the weight matrix for the first layer
+    const firstLayerWeights = weightMatrices[0] || [];
 
     for (let i = 0; i < firstHiddenNeurons; i++) {
         const yPos = (i + 0.5) * (hiddenPixelSpacing / neuronSpacingFactor);
+
+        // Get weights for this neuron
+        const neuronWeights = firstLayerWeights[i] || [];
 
         // Create a group for each neuron's visualization
         const neuronGroup = hiddenGroup
             .append("g")
             .attr("class", "neuron-matrix-group")
-            .attr("data-base-y", yPos - miniGridWidth / 2)  // Store base Y position
+            .attr("data-base-y", yPos - miniGridWidth / 2)
             .attr("transform", `translate(-40, ${yPos - miniGridWidth / 2})`)
-            .style("cursor", "pointer")  // Add cursor pointer
-            .on("click", (event: MouseEvent) => {  // Add click handler
+            .style("cursor", "pointer")
+            .on("click", (event: MouseEvent) => {
                 event.stopPropagation();
-                showMatrixModal(i, data);
+                showMatrixModal(i, neuronWeights);
             });
 
         // Draw 8x8 weight matrix for this neuron
         for (let row = 0; row < miniGridSize; row++) {
             for (let col = 0; col < miniGridSize; col++) {
                 const idx = row * miniGridSize + col;
-                const value = data[idx] || 0; // Use input data for now, replace with actual weights
+                const weight = neuronWeights[idx] || 0;
 
                 const rectGroup = neuronGroup
                     .append("g")
@@ -806,13 +807,13 @@ const drawInputVisualizations = (
                     .append("rect")
                     .attr("width", miniPixelSize)
                     .attr("height", miniPixelSize)
-                    .attr("fill", getViridisColor(value))
+                    .attr("fill", getWarmColdColor(weight))
                     .append("title")
-                    .text(value.toFixed(2));
+                    .text(weight.toFixed(3));
             }
         }
 
-        // Add neuron value text (keep original)
+        // Add neuron value text
         hiddenGroup
             .append("text")
             .attr("x", -42)
@@ -822,7 +823,7 @@ const drawInputVisualizations = (
             .attr("dominant-baseline", "middle")
             .attr("font-size", "8px")
             .attr("fill", "#666")
-            .text((data[i] || 0).toFixed(2));
+            .text(neuronWeights[0]?.toFixed(2) || "0.00");
     }
 };
 
@@ -927,7 +928,6 @@ const drawControls = (
             .attr("class", "filter-controls")
             .attr("transform", `translate(${legendX}, 50)`);
 
-        // Rest of the original controls remain exactly the same
         controls
             .append("text")
             .attr("x", 0)

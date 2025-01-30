@@ -6,31 +6,6 @@ import NNdrawer from "./NNdrawer.tsx";
 import DatasetPreview from './DatasetPreview';
 import ModelNetworkVisualizer from './modelNNVisualizer.tsx';
 
-// Viridis color mapping function
-const getViridisColor = (value) => {
-    const colors = [
-        [68, 1, 84],       // Dark purple
-        [70, 50, 127],     // Purple
-        [59, 82, 139],     // Blue
-        [33, 144, 141],    // Teal
-        [93, 201, 99],     // Green
-        [253, 231, 37]     // Yellow
-    ];
-
-    const v = Math.max(0, Math.min(1, value));
-    const numSegments = colors.length - 1;
-    const segment = Math.min(Math.floor(v * numSegments), numSegments - 1);
-    const segmentT = (v * numSegments) - segment;
-
-    const c1 = colors[segment];
-    const c2 = colors[segment + 1];
-
-    const r = Math.round(c1[0] + (c2[0] - c1[0]) * segmentT);
-    const g = Math.round(c1[1] + (c2[1] - c1[1]) * segmentT);
-    const b = Math.round(c1[2] + (c2[2] - c1[2]) * segmentT);
-
-    return `rgb(${r}, ${g}, ${b})`;
-};
 
 function App() {
     const [isModelFileUploaded, setIsModelFileUploaded] = useState(false);
@@ -161,10 +136,12 @@ function App() {
                                 2. Node-to-node connections (if provided in data.pt)<br/>
                                 <br/>
                                 Color coding:<br/>
-                                <span style={{color: '#ff0000'}}>Red</span>: Strong positive/excitatory connection<br/>
-                                <span style={{color: '#0000ff'}}>Blue</span>: Strong negative/inhibitory connection<br/>
-                                <span style={{color: '#ffffff'}}>White</span>: Weak/no connection<br/>
+                                <span style={{color: '&#x23;ff0000'}}>Red</span>: Strong positive/excitatory
+                                connection<br/>
+                                <span style={{color: '&#x23;0000ff'}}>Blue</span>: Strong negative/inhibitory connection<br/>
+                                <span style={{color: '&#x23;ffffff'}}>White</span>: Weak/no connection<br/>
                             </code>
+
                             <p></p>
                             <p>The model and data is expected in the following format</p>
                             <code>
@@ -178,7 +155,8 @@ function App() {
                                 &nbsp;&nbsp;&nbsp;&nbsp;<span className='comment'> # Activations for all layers including input, (NxD) </span><br/>
                                 &nbsp;&nbsp;&nbsp;&nbsp;&apos;activations&apos;: [torch.Tensor(), ...],<br/>
                                 &nbsp;&nbsp;&nbsp;&nbsp;<span className='comment'> # Definition how to group activations. Every entry is visualized as a separate layer. </span><br/>
-                                &nbsp;&nbsp;&nbsp;&nbsp;&apos;layers&apos;: [["input"], ["linear", "relu"], ["linear"]],<br/>
+                                &nbsp;&nbsp;&nbsp;&nbsp;&apos;layers&apos;: [[&quot;input&quot;],
+                                [&quot;linear&quot;, &quot;relu&quot;], [&quot;linear&quot;]],<br/>
                                 &nbsp;&nbsp;&nbsp;&nbsp;<span className='comment'> # Targets for all samples used to split histograms </span><br/>
                                 &nbsp;&nbsp;&nbsp;&nbsp;&apos;targets&apos;: torch.Tensor(),<br/>
                                 &nbsp;&nbsp;&nbsp;&nbsp;<span className='comment'> # Values to visualize as edges between nodes. Has to match the amount and shape of weight matrices. </span><br/>
@@ -272,7 +250,6 @@ function App() {
                                 <ModelNetworkVisualizer
                                     visualizationData={visualizationData}
                                     firstLayerData={datasetPreview}
-                                    getViridisColor={getViridisColor}
                                     settings={settings}
                                     setSettings={setSettings}
                                 />
