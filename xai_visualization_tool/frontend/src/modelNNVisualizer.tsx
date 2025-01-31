@@ -307,7 +307,7 @@ const ModelNetworkVisualizer: React.FC<ModelNetworkVisualizerProps> = ({
             containerRef.current.clientWidth - margin.left - margin.right
         );
         const height = Math.max(
-            1000,
+            4000,
             containerRef.current.clientHeight - margin.top - margin.bottom
         );
         const neuronRadius = 25;
@@ -343,7 +343,7 @@ const ModelNetworkVisualizer: React.FC<ModelNetworkVisualizerProps> = ({
         // Setup zoom behavior
         const zoom = d3
             .zoom<Element, unknown>()
-            .scaleExtent([0.5, 4]) // Sets the zoom scale range
+            .scaleExtent([0.1, 1]) // Sets the zoom scale range
             .on("zoom", (event) => {
                 const {transform} = event;
 
@@ -392,9 +392,16 @@ const ModelNetworkVisualizer: React.FC<ModelNetworkVisualizerProps> = ({
                     });
             });
 
-        (svg as any)
-            .call(zoom)
-            .call(zoom.transform, d3.zoomIdentity.translate(margin.left, margin.top));
+            (svg as any).call(zoom); // Attach zoom behavior
+
+            setTimeout(() => {
+                (svg as any).call(
+                    zoom.transform, 
+                    d3.zoomIdentity.translate(margin.left, margin.top).scale(0.1) // Apply initial zoom
+                );
+            }, 0); // Delay to allow rendering
+            
+        
 
         // Draw network structure
 
