@@ -5,29 +5,12 @@ A visualisation tool that aims to make neural networks more transparent and prov
 Most ML models are considered black-box models, which is problematic for high-stakes decisions. An Understanding why a model made a certain prediction (e.g medical diagnosis), verifying and debugging ML models is needed. 
 Problem: Hard to verify correctness of explanations and it was shown that most XAl methods are not reliable
 
-Other Applications already exisiting:
-- https://alexlenail.me/NN-SVG/
-- https://tensorspace.org
-- https://playground.tensorflow.org
+Project Includes 
+- Project Journal
+- GitHub Repository 
+- Demo (poster session)
 
-GRADING CRITERIA
-- Project Journal (40%)
-- GitHub Repository (30%)
-- Demo (poster session) (30%)
----
-
-## Requirements
-
-### Base Requirements
-
-- Upload a trained model checkpoint.
-- Upload data, e.g., per layer, node, or edge collectively.
-- Tool visualizes:
-  - Activation histograms.
-  - Strength of individual edges.
-- Well-documented codebase for ease of collaboration and maintainability.
-
-### Advanced Features
+### Advanced Features to be implemented
 
 - Visualizations of the input layer, either as individual nodes or in image form.
 - Overlay ground truth on the input layer for comparison.
@@ -56,26 +39,11 @@ GRADING CRITERIA
    - Determine frontend and backend architecture.
    - Decide on libraries to use.
    - Establish a data format for layer, node, and edge information.
+   - Research for others tools in this field (only found: https://playground.tensorflow.org, which still does not do what we want)
 
----
-
-## Library Usage
-
-### Frontend
-
-- **Framework**: React
-- **Visualization**: D3.js or other data visualization libraries
-
-### Backend
-
-- **Package Management**: Use `uv`
-- **Framework**: FastAPI for efficient API creation and management
-
----
 
 ## Overview Image
 
-Overview of XAI Method
 <img width="941" alt="Bildschirmfoto 2024-11-10 um 22 59 53" src="https://github.com/user-attachments/assets/187e3a61-b7d0-4ebe-b1b5-15e94ddf48cc">
 
 *Example Info for Dataset xai-tris-ds/linear_1d1p_0.18_uncorrelated.pt:*
@@ -88,6 +56,19 @@ Overview of XAI Method
 | Number of Images in the Test Dataset | 1000 |
 
 <img width="1501" alt="linear_first20images" src="https://github.com/user-attachments/assets/3f86c776-b32b-4d34-a4be-c2bca4e9fc8d" />
+
+
+
+## Architecture Concept
+
+![XAI_Architecture 2_pages-to-jpg-0001](https://github.com/user-attachments/assets/bd6aa4e1-5c85-4cb3-9bab-d30e3d734133)
+![XAI_Architecture 2_pages-to-jpg-0002](https://github.com/user-attachments/assets/3f087f77-07cf-4bfb-a017-baab11a52ad3)
+![XAI_Architecture 2_pages-to-jpg-0003](https://github.com/user-attachments/assets/81ac29d8-df59-4571-b65b-8bcf682a00cc)
+![XAI_Architecture 2_pages-to-jpg-0004](https://github.com/user-attachments/assets/1ec160b8-8e7a-488a-9472-2148bfb88ff5)
+
+
+
+
 
 
 
