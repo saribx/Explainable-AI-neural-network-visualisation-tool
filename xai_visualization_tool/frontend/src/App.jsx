@@ -1,7 +1,7 @@
 import {BrowserRouter as Router, Route, Routes, Link} from 'react-router-dom';
 import {useState} from 'react';
 import './App.css';
-import api from './api';
+import api from './api.ts';
 import NNdrawer from "./NNdrawer.tsx";
 import DatasetPreview from './DatasetPreview';
 import ModelNetworkVisualizer from './modelNNVisualizer.tsx';
@@ -85,7 +85,7 @@ function App() {
                 setIsModelFileUploaded(true);
                 setIsActFileUploaded(true);
                 setFile({name: 'linear_correlated_model.pt'});
-                setAFile({name: 'acts_linear_correlated_model_with_targets_node_node_with_name_and_input.pt'});
+                setAFile({name: 'acts_targets_node_node.pt'});
                 setError(null);
                 setUploadSuccess({model: true, act: true});
             }
@@ -123,7 +123,7 @@ function App() {
                 <Route path="/" element={
                     <>
                         <h1 className="H">XAI NN Visualization Tool</h1>
-                        <h3>Upload your trained model and its activations to visualize your neural network</h3>
+                        <h3>Upload your trained model, its activations and data to visualize your neural network</h3>
 
                         <div className="code-block">
                             <p>With the simple upload of your trained model and additional data to visualize saved as
@@ -134,16 +134,10 @@ function App() {
                             <code>
                                 1. Model weights (default)<br/>
                                 2. Node-to-node connections (if provided in data.pt)<br/>
-                                <br/>
-                                Color coding:<br/>
-                                <span style={{color: '&#x23;ff0000'}}>Red</span>: Strong positive/excitatory
-                                connection<br/>
-                                <span style={{color: '&#x23;0000ff'}}>Blue</span>: Strong negative/inhibitory connection<br/>
-                                <span style={{color: '&#x23;ffffff'}}>White</span>: Weak/no connection<br/>
                             </code>
-
+                            <p><br/></p>
                             <p></p>
-                            <p>The model and data is expected in the following format</p>
+                            <p>The model and data is expected in the following format:</p>
                             <code>
                                 import torch<br/>
 

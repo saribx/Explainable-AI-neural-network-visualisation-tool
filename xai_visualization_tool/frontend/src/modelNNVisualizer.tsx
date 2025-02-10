@@ -8,68 +8,25 @@
  * - Interactive zoom and filter controls
  * - First layer data visualization
  */
-
 import React, {useEffect, useRef, useState} from "react";
 import * as d3 from "d3";
 import "./App.css";
 import HistogramModel from "./HistogramModel";
-import {ISettings} from "./common";
+import {
+    ISettings,
+    ConnectionData,
+    NeuronData,
+    HistogramBin,
+    VisualizationData,
+    ConnectionFilter,
+    WeightSource,
+    LayerStructure,
+    MatrixModalProps
+} from "./common";
+
+// Interfaces used here are definied in common.tsx
 
 // ============= Types & Interfaces =============
-interface LayerStructure {
-    name: string;
-    neurons: number;
-    layer_type: string;
-    modules: undefined | string[];
-    activation_start: number;
-}
-
-interface ConnectionData {
-    x1: number;
-    y1: number;
-    x2: number;
-    y2: number;
-    weight: number;
-    sourceNeuron: number;
-    targetNeuron: number;
-}
-
-interface NeuronData {
-    x: number;
-    y: number;
-    values: number[];
-    targets: number[];
-    layerIndex: number;
-    neuronIndex: number;
-}
-
-interface HistogramBin {
-    x0: number | null;
-    x1: number | null;
-    length: number;
-    x: number;
-    y: number;
-}
-
-interface VisualizationData {
-    model_structure: LayerStructure[];
-    activations: {
-        values: number[][];
-        targets: number[];
-    }[];
-    weight_matrices: number[][][];
-    weight_range: {
-        min: number;
-        max: number;
-    };
-    layers: string[][];
-}
-
-interface MatrixModalProps {
-    data: number[];
-    onClose: () => void;
-    neuronIndex: number;
-}
 
 const MatrixModal: React.FC<MatrixModalProps> = ({data, onClose, neuronIndex}) => {
     const gridSize = 8;
@@ -105,7 +62,7 @@ const MatrixModal: React.FC<MatrixModalProps> = ({data, onClose, neuronIndex}) =
                                 {value.toFixed(2)}
                             </div>
                         );
-                        v
+
                     })}
                 </div>
             </div>
@@ -128,36 +85,12 @@ type D3Selection = d3.Selection<
     undefined
 >;
 
-// Connection filter type to resolve undefined reference
-interface ConnectionFilter {
-    showAll: boolean;
-    showPositive: boolean;
-    showNegative: boolean;
-}
-
 interface SettingsProps {
     settings: ISettings;
     setSettings: (settings: ISettings) => void;
     modelStructure: LayerStructure[];
 }
 
-interface VisualizationData {
-    model_structure: LayerStructure[];
-    activations: {
-        values: number[][];
-        targets?: number[];
-    }[];
-    weight_matrices: number[][][];
-    node_node_matrices?: number[][][];
-    weight_range: {
-        min: number;
-        max: number;
-    };
-    node_node_range?: {
-        min: number;
-        max: number;
-    };
-}
 
 // ============= Utility Functions =============
 
@@ -165,7 +98,7 @@ interface VisualizationData {
  * Maps a value to a color using a viridis-like color scheme
  */
 // Warm-cold color mapping function
-const getWarmColdColor = (value) => {
+const getWarmColdColor = (value: number) => {
     // Normalisiere zu [-1,1] und dann zu [0,1]
     const normalized = (Math.max(-1, Math.min(1, value * 1.5)) + 1) / 2;
 
@@ -237,7 +170,7 @@ const Settings: React.FC<SettingsProps> = ({
                                         handleLayerChange(layerIndex, e.target.value)
                                     }
                                 >
-                                    {layer.modules?.map((module, i) => (
+                                    {layer.modules?.map((module) => (
                                         <option key={module} value={module}>
                                             {module}
                                         </option>
@@ -255,8 +188,6 @@ const Settings: React.FC<SettingsProps> = ({
 /**
  * Main Network Visualizer Component
  */
-type WeightSource = "model" | "node_node";
-
 const ModelNetworkVisualizer: React.FC<ModelNetworkVisualizerProps> = ({
                                                                            visualizationData,
                                                                            firstLayerData,
@@ -392,16 +323,15 @@ const ModelNetworkVisualizer: React.FC<ModelNetworkVisualizerProps> = ({
                     });
             });
 
-            (svg as any).call(zoom); // Attach zoom behavior
+        (svg as any).call(zoom); // Attach zoom behavior
 
-            setTimeout(() => {
-                (svg as any).call(
-                    zoom.transform, 
-                    d3.zoomIdentity.translate(margin.left, margin.top).scale(0.1) // Apply initial zoom
-                );
-            }, 0); // Delay to allow rendering
-            
-        
+        setTimeout(() => {
+            (svg as any).call(
+                zoom.transform,
+                d3.zoomIdentity.translate(margin.left, margin.top).scale(0.1) // Apply initial zoom
+            );
+        }, 0); // Delay to allow rendering
+
 
         // Draw network structure
 
@@ -539,14 +469,7 @@ const createConnections = (
                         }
                     );
 
-                    const weight = (() => {
-                        if (typeof rawWeight === "number") return rawWeight;
-                        if (typeof rawWeight === "string") {
-                            const parsed = parseFloat(rawWeight);
-                            return isNaN(parsed) ? 0 : parsed;
-                        }
-                        return 0;
-                    })();
+                    const weight = typeof rawWeight === "number" ? rawWeight : 0;
 
                     // Log the processed weight
                     console.log(`Processed weight: ${weight}`);
@@ -611,12 +534,11 @@ const drawNeurons = (
 
     layers.forEach((layer, layerIndex) => {
         const neuronY = (height / Math.max(layer.neurons + 1, 2)) * spacingFactor;
-        const moduleToVisualize = settings.layers.to_visualize?.[layerIndex];
+        const moduleToVisualize = settings.layers.to_visualize?.[layerIndex] || '';
         const activationStart = layer.activation_start;
-        const activationIdx =
-            layerIndex == 0
-                ? 0
-                : activationStart + layer.modules?.indexOf(moduleToVisualize) ?? 0;
+        const activationIdx = layerIndex === 0
+            ? 0
+            : activationStart + (layer.modules?.indexOf(moduleToVisualize) ?? 0);
 
         console.log(layerIndex, activationStart, activationIdx);
 
@@ -727,7 +649,6 @@ const drawInputVisualizations = (
 ) => {
     // Draw input layer visualization (keep original vertical layout)
     const pixelSize = 15;
-    const pixelGap = 2;
     const inputNeurons = modelStructure[0].neurons;
     const firstHiddenNeurons = modelStructure[1].neurons;
 
@@ -808,7 +729,7 @@ const drawInputVisualizations = (
                     .append("g")
                     .attr("class", "matrix-cell")
                     .attr("data-base-x", col * miniPixelSize - 20)
-                    .attr("data-base-y", row * miniPixelSize - 10 )
+                    .attr("data-base-y", row * miniPixelSize - 10)
                     .attr("transform", `translate(${col * miniPixelSize - 20}, ${row * miniPixelSize})`);
 
                 rectGroup

@@ -34,8 +34,8 @@ class NetworkAnalyzer:
 
     @staticmethod
     def analyze_model_structure(
-        state_dict: Dict,
-        layers_modules: List[List[str]],
+            state_dict: Dict,
+            layers_modules: List[List[str]],
     ) -> Tuple[List[Dict], List[np.ndarray]]:
         """
         Analyzes the structure of a neural network and extracts weight matrices.
@@ -280,7 +280,7 @@ class NetworkAnalyzer:
 
         # Check if activations and layers have the same length
         if len(data_to_visualize["activations"]) != len(
-            flatten(data_to_visualize["layers"])
+                flatten(data_to_visualize["layers"])
         ):
             raise ValueError("Length of activations and layers does not match")
 
@@ -310,7 +310,7 @@ class NetworkAnalyzer:
                 raise ValueError("Number of weight matrices does not match node_node")
 
             for idx, (weight, node_node) in enumerate(
-                zip(weights, data_to_visualize["node_node"])
+                    zip(weights, data_to_visualize["node_node"])
             ):
                 if weight.shape != node_node.shape:
                     raise ValueError(
@@ -323,12 +323,10 @@ class FileHandler:
 
     def __init__(self):
         self.upload_dir = Path("/tmp")
-        # Get the parent directory of the backend folder (project root)
-        self.root_dir = Path(__file__).parent.parent
+        self.root_dir = Path(__file__).parent.parent.parent
         self.example_files = {
-            "model": self.root_dir / "linear_correlated_model.pt",
-            "activations": self.root_dir
-            / "acts_linear_correlated_model_with_targets_node_node_with_name_and_input.pt",
+            "model": self.root_dir / "example_files" / "linear_correlated_model.pt",
+            "activations": self.root_dir / "example_files" / "acts_targets_node_node.pt",
         }
 
     async def save_upload(self, file: UploadFile, file_type: str) -> Path:

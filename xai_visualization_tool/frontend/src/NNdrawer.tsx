@@ -24,9 +24,6 @@ interface NetworkConfig {
  * - Configurable number of input, hidden, and output nodes
  * - Real-time SVG visualization of network structure
  * - Responsive design with d3.js rendering
- *
- * @component
- * @returns {React.ReactElement} Rendered neural network configuration UI
  */
 const NNdrawer: React.FC = () => {
     // Initial network configuration with default values

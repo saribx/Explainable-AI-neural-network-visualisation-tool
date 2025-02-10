@@ -80,7 +80,7 @@ h3 {
  *******************/
 .navbar {
     background-color: black;
-    padding: 1.2rem 2rem;
+    padding: 0.5rem 2rem;
     box-shadow: var(--shadow-sm);
 }
 
