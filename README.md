@@ -39,3 +39,6 @@ For questions reach out to the team members:
 - Hjalmar Schulz
 
 Supervised by Prof. Dr. Stefan Haufe | Explainable AI (XAI) | TU Berlin
+
+<img width="1417" alt="Bildschirmfoto 2025-02-11 um 00 30 38" src="https://github.com/user-attachments/assets/a3a9afa8-7e02-4993-9c48-ea173bcee302" />
+
