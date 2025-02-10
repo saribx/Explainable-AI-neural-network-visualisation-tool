@@ -7,15 +7,14 @@ Problem: Hard to verify correctness of explanations and it was shown that most X
 
 Project Includes 
 - Project Journal
-- GitHub Repository 
+- GitHub Repository (under development branch!)
 - Demo (poster session)
 
 ### Advanced Features to be implemented
 
-- Visualizations of the input layer, either as individual nodes or in image form.
 - Overlay ground truth on the input layer for comparison.
 - Highlight the strongest path from input to output on hover.
-- Enable viewing of individual samples.
+- Enable viewing of individual samples inside the histograms.
 - Support for various aggregation and visualization strategies for individual samples.
 
 
