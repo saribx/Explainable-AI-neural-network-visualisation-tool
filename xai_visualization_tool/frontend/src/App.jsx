@@ -233,11 +233,9 @@ function App() {
                                     <h4>Model Structure:</h4>
                                     <pre>{JSON.stringify(visualizationData.model_structure, null, 2)}</pre>
                                     <h4>Data Availability:</h4>
-                                    <pre>
-                                        {`Activations: ✓ Available
-                                            Targets: ${visualizationData.activations[0].targets ? '✓ Available' : '✗ Not Available'}
-                                            Node-Node Connections: ${visualizationData.node_node_matrices ? '✓ Available' : '✗ Not Available'}`}
-                                    </pre>
+                                    <pre>{`Activations and optionally uploaded: 
+                                      Targets: ${visualizationData.activations[0].targets ? '✓ ' : '✗'}
+                                      Node-Node Connections: ${visualizationData.node_node_matrices ? '✓ ' : '✗'}`}</pre>
                                     <h4>Activation Data Structure:</h4>
                                     <pre>{visualizationData.activation_info}</pre>
                                 </div>
