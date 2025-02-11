@@ -468,7 +468,8 @@ class NNVisualizationServer:
             """Handles dataset file upload and analyzes its structure."""
             try:
                 file_path = await self.file_handler.save_upload(file, "dataset")
-                dataset = torch.load(file_path)
+                # Set weights_only=False since we're loading a dataset that may contain numpy arrays
+                dataset = torch.load(file_path, map_location=torch.device("cpu"), weights_only=False)
                 self.current_dataset = dataset  # Store dataset for later use
 
                 # Analyze dataset structure
@@ -492,17 +493,13 @@ class NNVisualizationServer:
                                 # If it's a perfect square
                                 if size * size == first_tensor.shape[0]:
                                     dimensions = [size, size]
-                                    first_element = (
-                                        first_tensor.detach().cpu().numpy().tolist()
-                                    )
+                                    first_element = first_tensor.detach().cpu().numpy().tolist()
                             else:
                                 dimensions = list(first_tensor.shape)
-                                first_element = (
-                                    first_tensor.detach().cpu().numpy().tolist()
-                                )
+                                first_element = first_tensor.detach().cpu().numpy().tolist()
 
                 print(f"Dimensions: {dimensions}")  # Debug print
-                print(f"First element shape: {len(first_element)}")  # Debug print
+                print(f"First element shape: {len(first_element) if first_element else None}")  # Debug print
 
                 return {
                     "splits": splits,
@@ -512,10 +509,11 @@ class NNVisualizationServer:
 
             except Exception as e:
                 print("Error processing dataset:", str(e))
-                import traceback
-
-                print(traceback.format_exc())
-                raise HTTPException(status_code=500, detail=str(e))
+                traceback.print_exc()
+                raise HTTPException(
+                    status_code=500,
+                    detail=f"Error processing dataset: {str(e)}\nPlease ensure your dataset file is in the correct format."
+                )
 
         @self.app.get("/get_dataset_element/")
         async def get_dataset_element(split: str, index: int):

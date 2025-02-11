@@ -342,7 +342,7 @@ select {
 
 /* Updated input styles */
 .index-input {
-    width: 100%;
+    width: 80%;
     padding: 0.625rem 2.5rem 0.625rem 1rem;
     border: 1px solid var(--gray-200);
     border-radius: var(--radius-md);
