@@ -133,7 +133,7 @@ class NetworkAnalyzer:
         if isinstance(data_to_visualize, dict):
             info = {
                 "activations": [a.shape for a in data_to_visualize["activations"]],
-                "targets": data_to_visualize["targets"].shape,
+                "targets": data_to_visualize["targets"].shape if "targets" in data_to_visualize else None,
                 "layers": data_to_visualize["layers"],
                 "node_node": [a.shape for a in data_to_visualize["node_node"]]
                 if "node_node" in data_to_visualize
@@ -147,15 +147,15 @@ class NetworkAnalyzer:
         if isinstance(data_to_visualize, dict):
             # If we have a dict with activations and targets
             act_data = data_to_visualize["activations"]
-            targets = data_to_visualize["targets"]
+            targets = data_to_visualize.get("targets", None)
             processed_activations = [
                 {
                     "values": tensor.tolist()
                     if isinstance(tensor, torch.Tensor)
                     else tensor,
-                    "targets": targets.tolist()
-                    if isinstance(targets, torch.Tensor)
-                    else targets,
+                    "targets": targets.tolist() 
+                    if isinstance(targets, torch.Tensor) 
+                    else targets if targets is not None else None,
                 }
                 for tensor in act_data
             ]
@@ -401,7 +401,8 @@ class NNVisualizationServer:
                     "Activations shape:",
                     [a.shape for a in data_to_visualize["activations"]],
                 )
-                print("Targets shape:", data_to_visualize["targets"].shape)
+                if "targets" in data_to_visualize:
+                    print("Targets shape:", data_to_visualize["targets"].shape)
             else:
                 print("First activation shape:", data_to_visualize[0].shape)
             print("=======================================\n")
