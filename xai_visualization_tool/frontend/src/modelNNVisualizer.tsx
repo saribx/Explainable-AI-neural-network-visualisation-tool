@@ -791,13 +791,13 @@ const drawControls = (
         if (hasNodeNode) {
             const weightSourceOptions = [
                 {
-                    x: width - 100,
+                    x: width - 85,
                     label: "Model Weights",
                     type: "model" as WeightSource,
                 },
                 {
-                    x: width + 50,
-                    label: "Node Connections",
+                    x: width + 45,
+                    label: "Custom Weights",
                     type: "node_node" as WeightSource,
                 },
             ];
@@ -809,45 +809,49 @@ const drawControls = (
 
             weightSourceGroup
                 .append("text")
-                .attr("x", width - 50)
-                .attr("y", 0)
+                .attr("x", width - 20)
+                .attr("y", 15)
                 .style("font-size", "12px")
                 .attr("text-anchor", "middle")
-                .attr("font-weight", "bold")
-                .text("Weight Source:");
+                .attr("fill", "#64748b")
+                .text("WEIGHT SOURCE");
 
             weightSourceOptions.forEach(({x, label, type}) => {
                 const isSelected = type === weightSource;
 
                 const sourceGroup = weightSourceGroup
                     .append("g")
-                    .attr("transform", `translate(${x}, 10)`)
+                    .attr("transform", `translate(${x}, 30)`)
                     .style("cursor", "pointer")
                     .on("click", () => {
                         setWeightSource(type as WeightSource);
                     });
 
+                // Button background
                 sourceGroup
                     .append("rect")
                     .attr("x", -60)
-                    .attr("y", 0)
+                    .attr("y", -10)
                     .attr("width", 120)
                     .attr("height", 30)
-                    .attr("rx", 15)
-                    .attr("ry", 15)
-                    .attr("fill", isSelected ? "#2563eb" : "#e0e0e0")
-                    .attr("opacity", 0.8);
+                    .attr("rx", 4)
+                    .attr("ry", 4)
+                    .attr("fill", isSelected ? "#9c27b0" : "white")
+                    .attr("stroke", isSelected ? "#9c27b0" : "#cbd5e1")
+                    .attr("stroke-width", 1)
+                    .attr("opacity", isSelected ? 1 : 1);
 
+                // Text
                 sourceGroup
                     .append("text")
                     .attr("x", 0)
-                    .attr("y", 15)
+                    .attr("y", 5)
                     .attr("text-anchor", "middle")
                     .attr("dominant-baseline", "middle")
                     .text(label)
-                    .attr("fill", isSelected ? "white" : "#666")
-                    .attr("font-weight", "bold")
-                    .style("font-size", "12px");
+                    .attr("fill", isSelected ? "white" : "#475569")
+                    .style("font-size", "12px")
+                    .style("font-weight", isSelected ? "600" : "500");
             });
         }
 
